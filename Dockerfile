@@ -15,7 +15,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update && apt-get install -y --no-install-recommends libcairo2 tesseract-ocr tesseract-ocr-eng poppler-utils antiword && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+COPY app.py ./
+COPY LICENSE ./
+COPY dashboard ./dashboard
+COPY profiles ./profiles
+COPY static ./static
+COPY templates ./templates
 COPY --from=mindmap_frontend /static/mindmaps ./static/mindmaps
 
 LABEL org.opencontainers.image.title="WidgetDeck" \
