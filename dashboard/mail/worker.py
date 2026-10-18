@@ -3,13 +3,17 @@ import argparse
 import time
 
 from . import MailError
-from .outbox import claim,finish
+from .outbox import claim,finish,retain
 from .transport import deliver
 
 
 def run_once(app,now=None):
     with app.app_context():
         config=app.extensions['dashboard_mail']
+        retention_clock = time.monotonic()
+        if retention_clock - app.extensions.get('dashboard_mail_retention_clock', float('-inf')) >= 60:
+            retain()
+            app.extensions['dashboard_mail_retention_clock'] = retention_clock
         if not config.enabled:raise MailError('Email is not configured; worker remains stopped.')
         claimed=claim(config,now)
         if claimed is None:return False
@@ -21,8 +25,13 @@ def run_once(app,now=None):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--once',action='store_true')
+    parser.add_argument('--cleanup',action='store_true',help='Apply retention without sending mail, including when SMTP is disabled.')
     args=parser.parse_args(argv)
     from app import app
+    if args.cleanup:
+        with app.app_context():
+            retain()
+        return 0
     try:
         while True:
             worked=run_once(app)

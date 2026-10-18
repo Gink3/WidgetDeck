@@ -74,6 +74,8 @@ def init_mail(app):
     app.extensions['dashboard_mail'] = config
     from .outbox import initialize
     initialize(app)
+    from .admin import routes
+    app.register_blueprint(routes)
 
 
 class WidgetMail:

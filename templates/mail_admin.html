@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block body %}
+<main class="dashboard">
+  <h1>Email administration</h1>
+  <p><a href="{{ url_for('settings') }}">Back to Settings</a></p>
+  {% if queued %}<p role="status">Message queued for the mail worker. SMTP acceptance does not confirm inbox delivery.</p>{% endif %}
+  <section class="panel">
+    <h2>Send a test message</h2>
+    {% if mail_enabled %}
+    <form method="post" action="{{ url_for('mail_admin.test_message') }}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
+      <label>Recipient<input type="email" name="recipient" required></label>
+      <label>Subject<input name="subject" required maxlength="998" value="WidgetDeck email test"></label>
+      <label>Message<textarea name="text" required>Test message from WidgetDeck.</textarea></label>
+      <button class="primary">Queue test message</button>
+    </form>
+    {% else %}<p>Email is disabled. Configure SMTP on the server to enable sending.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <h2>Recent messages</h2>
+    <p>Latest 100 messages across accounts. Completed message content and addresses are removed after 7 days; metadata after 30 days. Active messages are retained.</p>
+    {% for message in messages %}
+    <article class="panel">
+      <p><code>{{ message.id }}</code> — {{ message.status }}</p>
+      <p>Widget {{ message.widget }} · Account {{ message.user_id }} · Attempts {{ message.attempts }} · Updated {{ message.updated_at }}</p>
+      <ul>{% for recipient in message.recipients %}<li>{{ recipient.recipient }} — {{ recipient.status }}{% if recipient.code %} ({{ recipient.code }}){% endif %} {{ recipient.reason }}</li>{% endfor %}</ul>
+      {% if message.payload_purged_at %}<p>Message content has expired.</p>
+      {% elif mail_enabled and message.status in ('failed', 'partial', 'uncertain') %}
+      <form method="post" action="{{ url_for('mail_admin.retry', ident=message.id) }}" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
+        <input type="hidden" name="revision" value="{{ message.revision }}">
+        {% if message.status == 'uncertain' %}<label><input type="checkbox" name="acknowledge_uncertain" value="yes" required> I reviewed this outcome and accept that retrying may deliver a duplicate.</label>{% endif %}
+        <p>Retry sends only to recipients that were not confirmed accepted by SMTP.</p>
+        <button>Retry eligible recipients</button>
+      </form>
+      {% endif %}
+    </article>
+    {% else %}<p>No messages.</p>{% endfor %}
+    <form method="post" action="{{ url_for('mail_admin.retention') }}">
+      <input type="hidden" name="csrf_token" value="{{ auth_csrf_token() }}">
+      <button>Run retention cleanup now</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

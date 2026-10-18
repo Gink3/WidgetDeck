@@ -40,8 +40,36 @@ up to the configured attempt limit. `accepted` means the SMTP server accepted
 responsibility; it does not establish inbox delivery.
 
 A lost acknowledgment after DATA, missing outcome, or expired worker lease is
-`uncertain`, with no automatic retry. Administrator-reviewed retry and outbox
-retention controls remain part of the follow-up email administration work (#84).
-Payloads remain in the database until retention is implemented; include the
-outbox in the existing database backup and access controls. Error/status output
-contains stable reason codes rather than server response text or mail bodies.
+`uncertain`, with no automatic retry. Administrators can open **Settings → Email
+administration** to see the latest 100 messages across accounts, recipient outcomes,
+SMTP reason codes, widget/user attribution and attempt counts. Message bodies and
+SMTP credentials are never displayed. This page and every action require an
+administrator browser session; bearer API keys cannot use these controls. All
+mutations require the existing browser CSRF token and same-origin checks.
+
+The test form enqueues a plain-text message to one explicitly entered address.
+The normal 1 MiB encoded-message limit applies; widget submissions retain the
+50-recipient limit. Sending still requires the dedicated mail worker. No request
+performs SMTP I/O, and a queued test is not proof of inbox delivery.
+
+Failed, partial and uncertain completed messages with retained payloads can be
+retried after review. The form carries a revision so concurrent workers, reviews
+or retention changes invalidate stale submissions. Accepted recipients are never
+resent. Uncertain recipients require explicit acknowledgment of possible duplicate
+delivery. Review records retain the administrator ID and time; each approved retry
+starts a fresh bounded attempt budget. Active messages and expired payloads cannot
+be retried. SMTP must be enabled to queue tests or retries.
+
+Retention removes completed subjects, sender/recipient addresses and text/HTML
+payloads after 7 days, then removes message metadata and associated review records
+after 30 days. Retention measures from completion, including uncertain outcomes;
+queued and processing mail is retained. Existing completed messages use their last
+update time when upgrading. Idempotency bindings and payload hashes survive the
+7-day purge and expire with metadata at 30 days, after which the key may be reused.
+Backups remain subject to the operator's separate backup retention policy.
+
+The worker applies cleanup at startup and at most once per minute while running.
+Use the administrator cleanup button or `python -m dashboard.mail.worker --cleanup`
+when SMTP is disabled or no worker runs. Cleanup never sends mail. Keep the outbox
+in existing database backups and access controls. Error/status output contains
+stable reason codes rather than server response text or mail bodies.

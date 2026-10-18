@@ -91,7 +91,7 @@ def settings():
     from flask import session
     for key in ('launcher_csrf', 'api_keys_csrf'):
         session.setdefault(key, secrets.token_urlsafe(32))
-    return render_template("settings.html")
+    return render_template("settings.html", mail_administrator=bool(current_user()["is_admin"]))
 
 
 @app.get("/api/settings")
