@@ -20,7 +20,7 @@ class UtilityNavigationBrowserTests(unittest.TestCase):
             expect(page.locator('.card[data-category="Games"]').first).to_have_attribute('data-widget-id','frontline-command')
             page.locator('#utility-category').select_option('Data')
             expect(page.locator('.card:visible')).to_have_count(3)
-            expect(page.get_by_label('Catalogue category')).to_be_visible();expect(page.locator('#catalogue-filter-scope')).to_contain_text('Search results, favourites and recent work include all categories')
+            expect(page.get_by_role('combobox',name='Utilities',exact=True)).to_be_visible();expect(page.locator('#catalogue-filter-scope')).to_contain_text('Search, favourites and recent work include all categories')
             page.locator('#utility-search').fill('paint')
             expect(page.locator('.card:visible')).to_have_count(1)
             page.locator('#utility-search').fill('wiki');expect(page.locator('#home-search-results [role=option][data-utility=wiki]')).not_to_have_count(0)
