@@ -1,7 +1,7 @@
-Dashboard Moon, Partial Derivative & Theta Hat logo set
+WidgetDeck Moon, Partial Derivative & Theta Hat logo set
 
 Teal crescent above a purple book cover/edge; white pages, black partial derivative
-symbol on left page and theta hat on right page. White DASHBOARD wordmark retained.
+symbol on left page and theta hat on right page. White WidgetDeck wordmark.
 Edited with the built-in image generation tool; exported by cropping and Lanczos
 resizing. Original design proportions and all existing asset paths remain supported.
 
@@ -18,10 +18,12 @@ Browser favicon: favicon.ico includes 16, 32, 48 pixel sizes.
 Apple home screen: apple-touch-icon.png (180x180).
 Android/application icons: 192 and 512 pixel PNGs.
 site.webmanifest supplies icon metadata; it does not enable offline support.
-Website image/icon URLs use purple-book-teal-moon-v2 to refresh cached assets.
+Wordmark URLs use widgetdeck-wordmark-v3 to refresh cached assets.
+Wordless icon URLs retain purple-book-teal-moon-v2. Legacy dashboard-* asset
+filenames remain supported for existing bookmarks and callers.
 
-Final built-in edit prompt: Preserve existing open-book geometry, white pages,
-black partial derivative and theta hat symbols and exact white DASHBOARD wordmark.
-Change cyan cover/spine/edge to purple #bd7aff and crescent to teal #18cbd3.
-Replace the dark backdrop with flat #151518; no texture, shadows or redesign.
+Latest built-in edit: Replace only the bottom DASHBOARD wordmark with exact
+text WidgetDeck, in bold white sans serif. Preserve the open book, purple edges,
+white pages, black partial derivative/theta hat symbols, teal moon and dark backdrop.
+Export wordmarks from master crop 1040x895+107+180 using Lanczos resizing.
 The generated backdrop is composited by CSS lighten against the actual header.

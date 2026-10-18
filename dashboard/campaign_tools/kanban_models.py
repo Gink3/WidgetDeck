@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import unicodedata
 
 from dashboard.database import db, timestamp
 from .common_models import _owner_id, _owned
@@ -55,6 +56,14 @@ def init_database(app):
             PRIMARY KEY(item_id,target_id,kind))""")
 
         connection.execute("CREATE INDEX IF NOT EXISTS kanban_links_target ON kanban_links(target_id)")
+        connection.execute("""CREATE TABLE IF NOT EXISTS kanban_efforts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            name TEXT NOT NULL, name_key TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(user_id,name_key))""")
+        connection.execute("""CREATE TABLE IF NOT EXISTS kanban_item_efforts (
+            item_id INTEGER NOT NULL, effort_id INTEGER NOT NULL, PRIMARY KEY(item_id,effort_id))""")
+        connection.execute("CREATE INDEX IF NOT EXISTS kanban_effort_items ON kanban_item_efforts(effort_id,item_id)")
+
 
 
 
@@ -81,8 +90,9 @@ def kanban_board_snapshot(board_id):
         items = [dict(row) for row in connection.execute("""SELECT i.*, c.name AS column_name
             FROM kanban_items i JOIN kanban_columns c ON c.id=i.column_id AND c.board_id=i.board_id
             WHERE i.board_id=? ORDER BY c.position,c.id,i.position,i.id""", (board_id,))]
+        attach_efforts(items)
         return {"id": board["id"], "name": board["name"], "created_at": board["created_at"],
-                "columns": columns, "items": items}
+                "columns": columns, "items": items, "efforts": kanban_efforts()}
 
 
 
@@ -140,6 +150,7 @@ def kanban_item_detail(item_id):
     item = kanban_item(item_id)
     if item is None:
         return None
+    attach_efforts([item])
     item["links"] = kanban_links(item_id)
     item["dependents"] = kanban_links(item_id, reverse=True)
     item["comments"] = kanban_comments(item_id)
@@ -159,7 +170,7 @@ def _item_history(item_id, action, changes):
 
 
 
-def add_kanban_item(board_id, column_id, title, notes):
+def add_kanban_item(board_id, column_id, title, notes, effort_ids=None):
     connection = db()
     with connection:
         connection.execute("BEGIN IMMEDIATE")
@@ -171,6 +182,9 @@ def add_kanban_item(board_id, column_id, title, notes):
         now = timestamp()
         cursor = connection.execute("""INSERT INTO kanban_items(board_id,column_id,title,notes,position,created_at,updated_at)
             VALUES(?,?,?,?,?,?,?)""", (board_id, column_id, title, notes, position, now, now))
+        ids = validate_effort_ids([] if effort_ids is None else effort_ids)
+        connection.executemany("INSERT INTO kanban_item_efforts(item_id,effort_id) VALUES(?,?)",
+                               [(cursor.lastrowid, ident) for ident in ids])
         _item_history(cursor.lastrowid, "created", {})
     return cursor.lastrowid
 
@@ -276,6 +290,7 @@ def delete_kanban_item(item_id, revision):
         if item is None:
             return False
         _check_revision(item, revision)
+        connection.execute("DELETE FROM kanban_item_efforts WHERE item_id=?", (item_id,))
         connection.execute("DELETE FROM kanban_item_history WHERE item_id=?", (item_id,))
         connection.execute("DELETE FROM kanban_comments WHERE item_id=?", (item_id,))
         connection.execute("DELETE FROM kanban_links WHERE item_id=? OR target_id=?", (item_id,item_id))
@@ -408,3 +423,105 @@ def update_kanban_links(item_id,links,revision):
             connection.execute('UPDATE kanban_items SET updated_at=?,revision=revision+1 WHERE id=?',(timestamp(),item_id))
             _item_history(item_id,'updated',{'links':{'before':str(before),'after':str(normalized)}})
     return kanban_item_detail(item_id)
+
+
+def kanban_efforts():
+    return [dict(r) for r in db().execute(
+        "SELECT id,name,revision FROM kanban_efforts WHERE user_id=? ORDER BY name_key,id", (_owner_id(),))]
+
+
+def attach_efforts(items):
+    """Attach only account-owned efforts to already-authorized item rows."""
+    grouped = {}
+    ids = [item['id'] for item in items]
+    # Bound SQL parameters and avoid scanning unrelated boards for item detail.
+    for offset in range(0,len(ids),400):
+        batch=ids[offset:offset+400]
+        placeholders=','.join('?' for _ in batch)
+        for row in db().execute(f"""SELECT a.item_id,e.id,e.name,e.revision FROM kanban_item_efforts a
+            JOIN kanban_efforts e ON e.id=a.effort_id JOIN kanban_items i ON i.id=a.item_id
+            JOIN kanban_boards b ON b.id=i.board_id WHERE e.user_id=? AND b.user_id=?
+            AND a.item_id IN ({placeholders}) ORDER BY e.name_key,e.id""", (_owner_id(),_owner_id(),*batch)):
+            grouped.setdefault(row['item_id'], []).append({k: row[k] for k in ('id','name','revision')})
+    for item in items:
+        item['efforts'] = grouped.get(item['id'], [])
+    return items
+
+
+def validate_effort_ids(ids):
+    if not isinstance(ids,list) or len(ids)>20 or any(type(i) is not int for i in ids) or len(set(ids))!=len(ids):
+        raise ValueError('Supply at most twenty distinct effort IDs.')
+    owned = {e['id'] for e in kanban_efforts()}
+    if not set(ids)<=owned:
+        raise ValueError('Choose efforts owned by this account.')
+    return sorted(ids)
+
+
+def _effort_name(name):
+    if not isinstance(name,str): raise ValueError('Supply an effort name.')
+    name=unicodedata.normalize('NFKC',name).strip()
+    if not 1<=len(name)<=80 or any(unicodedata.category(c).startswith('C') for c in name):
+        raise ValueError('Use an effort name of 1–80 characters without control characters.')
+    return name, name.casefold()
+
+
+def change_kanban_effort(name=None, effort_id=None, revision=None, delete=False):
+    connection=db()
+    with connection:
+        connection.execute('BEGIN IMMEDIATE')
+        effort=None
+        if effort_id is not None:
+            effort=connection.execute('SELECT * FROM kanban_efforts WHERE id=? AND user_id=?',
+                                      (effort_id,_owner_id())).fetchone()
+            if effort is None:return None
+            if type(revision) is not int:raise ValueError('Supply the effort revision.')
+            if revision!=effort['revision']:raise ItemConflict('Effort changed. Reload the board before editing it.')
+        if not delete:
+            name,key=_effort_name(name)
+            duplicate=connection.execute('SELECT id FROM kanban_efforts WHERE user_id=? AND name_key=?',(_owner_id(),key)).fetchone()
+            if duplicate and duplicate['id']!=effort_id:raise ValueError('An effort with that name already exists.')
+            if effort_id is None:
+                effort_id=connection.execute('INSERT INTO kanban_efforts(user_id,name,name_key) VALUES(?,?,?)',(_owner_id(),name,key)).lastrowid
+            elif name!=effort['name']:
+                connection.execute('UPDATE kanban_efforts SET name=?,name_key=?,revision=revision+1 WHERE id=?',(name,key,effort_id))
+            else:return {k:effort[k] for k in ('id','name','revision')}
+        # Renaming/removing an assigned effort changes each affected card revision.
+        if effort is not None:
+            affected=[r[0] for r in connection.execute("""SELECT a.item_id FROM kanban_item_efforts a
+                JOIN kanban_items i ON i.id=a.item_id JOIN kanban_boards b ON b.id=i.board_id
+                WHERE a.effort_id=? AND b.user_id=?""",(effort_id,_owner_id()))]
+            for item_id in affected:
+                connection.execute('UPDATE kanban_items SET updated_at=?,revision=revision+1 WHERE id=?',(timestamp(),item_id))
+                _item_history(item_id,'updated',{'effort':{'before':effort['name'],'after':None if delete else name}})
+        if delete:
+            connection.execute('DELETE FROM kanban_item_efforts WHERE effort_id=?',(effort_id,))
+            connection.execute('DELETE FROM kanban_efforts WHERE id=? AND user_id=?',(effort_id,_owner_id()))
+            return True
+        return dict(connection.execute('SELECT id,name,revision FROM kanban_efforts WHERE id=?',(effort_id,)).fetchone())
+
+
+def update_kanban_efforts(item_id, effort_ids, revision):
+    if type(revision) is not int:raise ValueError('Supply the item revision.')
+    connection=db()
+    with connection:
+        connection.execute('BEGIN IMMEDIATE')
+        item=kanban_item(item_id)
+        if item is None:return None
+        _check_revision(item,revision)
+        ids=validate_effort_ids(effort_ids)
+        before=attach_efforts([item])[0]['efforts']
+        if set(ids)!={e['id'] for e in before}:
+            connection.execute('DELETE FROM kanban_item_efforts WHERE item_id=?',(item_id,))
+            connection.executemany('INSERT INTO kanban_item_efforts(item_id,effort_id) VALUES(?,?)',[(item_id,i) for i in ids])
+            connection.execute('UPDATE kanban_items SET updated_at=?,revision=revision+1 WHERE id=?',(timestamp(),item_id))
+            after=[e['name'] for e in kanban_efforts() if e['id'] in ids]
+            _item_history(item_id,'updated',{'efforts':{'before':', '.join(e['name'] for e in before),'after':', '.join(after)}})
+    return kanban_item_detail(item_id)
+
+
+def kanban_effort_items(effort_id):
+    if not any(e['id']==effort_id for e in kanban_efforts()):return None
+    return attach_efforts([dict(r) for r in db().execute("""SELECT i.*,b.name AS board_name,c.name AS column_name
+        FROM kanban_item_efforts a JOIN kanban_items i ON i.id=a.item_id
+        JOIN kanban_boards b ON b.id=i.board_id JOIN kanban_columns c ON c.id=i.column_id
+        WHERE a.effort_id=? AND b.user_id=? ORDER BY b.id,c.position,i.position,i.id""",(effort_id,_owner_id()))])

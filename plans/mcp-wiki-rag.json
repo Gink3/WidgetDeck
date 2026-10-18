@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "plan_id": "mcp-wiki-rag-v1",
+  "effort": "MCP and Wiki RAG",
+  "board": "Dashboard",
+  "items": [
+    {
+      "key": "overview",
+      "title": "MCP/RAG - Deliver agent integration and grounded wiki answers",
+      "column": "To do",
+      "depends_on": [],
+      "notes": "Coordinate the MCP and wiki RAG effort in WidgetDeck. First milestone: contracts, API foundations, read-only MCP, safe Kanban writes, indexing lifecycle and keyword passage retrieval. Follow with hybrid retrieval, agent acceptance, answer generation, UI and reproducible rollout. Local-first indexing; hosted providers require explicit configuration. Preserve existing APIs, URLs, account isolation, data, search and backups. This is a tracking item; completing it requires the implementation milestones and acceptance evidence, not just creating cards."
+    },
+    {
+      "key": "contracts",
+      "title": "MCP/RAG - Define tool contracts and retrieval evaluation baseline",
+      "column": "To do",
+      "depends_on": [],
+      "notes": "Specify versioned MCP inputs/outputs/errors and retrieval source IDs, revisions, excerpts, permissions, pagination and context limits. Build representative sanitized query fixtures, including exact names, paraphrases, no-answer cases, conflicting sources and multiple accounts. Measure current wiki search recall/ranking and latency; choose measurable release criteria before optimizing. No private corpus in committed evaluation fixtures."
+    },
+    {
+      "key": "api",
+      "title": "MCP/RAG - Add compatible APIs for bounded retrieval and safe task updates",
+      "column": "To do",
+      "depends_on": [
+        "contracts"
+      ],
+      "notes": "Audit existing Kanban/wiki APIs; add only missing pagination, section retrieval, safe atomic note append and idempotent card creation. Retain existing request/response formats, routes, key behavior and revision checks. Define action-specific authorization for read-like POST endpoints without granting old keys new write privileges. Accept when existing callers pass regressions, retries do not duplicate completed operations, stale revisions return conflicts and ownership is enforced."
+    },
+    {
+      "key": "mcp-read",
+      "title": "MCP/RAG - Package read-only Dashboard MCP adapter",
+      "column": "To do",
+      "depends_on": [
+        "api"
+      ],
+      "notes": "Create an independently versioned Python adapter in WidgetDeck that calls supported HTTP APIs, never opens server databases. Expose dashboard_info, kanban_list_boards, kanban_list_items, kanban_get_item, wiki_search and wiki_get_page. Start with stdio. Keep credentials in private client configuration; refuse redirects that could forward tokens; add timeouts, bounded structured results, disabled-service discovery and useful sanitized errors. Verify in a supported coding-agent client."
+    },
+    {
+      "key": "mcp-write",
+      "title": "MCP/RAG - Add revision-safe Kanban MCP write tools",
+      "column": "To do",
+      "depends_on": [
+        "mcp-read"
+      ],
+      "notes": "Expose explicit create_item, append_item_note and move_item tools with schema validation, server-enforced permissions, current revisions and idempotency where appropriate. Preserve notes/history and existing effort associations. Do not expose arbitrary HTTP, SQL, shell, deployment, secrets or deletion tools. Reuse the Kanban skill for workflow/completion conventions. Accept when read-only/revoked/wrong-service credentials fail closed and timeout/conflict tests prevent silent overwrites or duplicates."
+    },
+    {
+      "key": "indexing",
+      "title": "MCP/RAG - Build durable wiki indexing and source lifecycle",
+      "column": "To do",
+      "depends_on": [
+        "contracts"
+      ],
+      "notes": "Add rebuildable derived-index tables and a durable worker job queue. Atomically enqueue source changes with writes. Index current non-deleted pages, titles, aliases, headings, selected metadata and successful attachment text. Exclude trash, revision history and inbox initially. Chunk along headings/paragraphs while respecting code/tables. Track owner, stable page/attachment IDs, source hash/revision, extraction/chunking versions and index generation. Implement idempotent backfill, retries, crash recovery, edit/delete/restore/import reconciliation and immediate query-time source exclusion. Do not block page saves on embeddings; preserve existing backups and data."
+    },
+    {
+      "key": "keyword",
+      "title": "MCP/RAG - Add ranked keyword passages and verifiable source links",
+      "column": "To do",
+      "depends_on": [
+        "api",
+        "indexing"
+      ],
+      "notes": "Implement bounded ranked passage retrieval behind a storage interface. Return stable source IDs, page title/ID, current revision/content hash, heading, canonical URL, exact excerpt and attachment locator only when available. Recheck ownership and source freshness before returning results. Keep existing wiki search working. Test exact identifiers, aliases, headings, tables/code, stale/deleted sources, no-answer cases and access isolation. Establish a usable retrieval-only milestone before model generation."
+    },
+    {
+      "key": "semantic",
+      "title": "MCP/RAG - Add configurable embeddings and hybrid retrieval",
+      "column": "To do",
+      "depends_on": [
+        "keyword"
+      ],
+      "notes": "Define an embedding-provider interface with local-first configuration and explicit opt-in for hosted providers. Select model/storage based on corpus and hardware benchmarks. Combine keyword and semantic candidates, deduplicate and bound per-document results and total context. Cache by account/source hash/model version; never mix incompatible embedding dimensions. Build new index generations before switching models. Add budgets, timeouts, rate limits, cancellation and keyword fallback. Accept only measured improvement against the baseline, with provider outage and model-change regressions."
+    },
+    {
+      "key": "agent-acceptance",
+      "title": "MCP/RAG - Validate agents against shared wiki retrieval",
+      "column": "To do",
+      "depends_on": [
+        "mcp-write",
+        "semantic"
+      ],
+      "notes": "Connect wiki MCP tools to the same retrieval service used by the UI. Coding agents synthesize from retrieved evidence using their own configured model; Dashboard need not make another generation call. Test citations, bounded context, exact/paraphrase queries, conflicting evidence, unsupported questions, ownership and malicious instructions embedded in sources. Treat retrieved content as untrusted data. Document that even local embeddings do not prevent passages being sent to a cloud agent provider. Record tool calls, latency and context usage against the scripted baseline without logging private bodies."
+    },
+    {
+      "key": "answers",
+      "title": "MCP/RAG - Implement optional grounded wiki answer service",
+      "column": "To do",
+      "depends_on": [
+        "semantic"
+      ],
+      "notes": "Add a separately configurable local/hosted generation provider, disabled by default. Retrieve authorized evidence, instruct grounded answers and abstention, identify conflicts, and validate citation IDs against retrieved passages before rendering. Source links must resolve the cited revision/hash or explicitly warn that the source changed. Do not treat citation validation as proof of factual correctness. Enforce per-account limits, timeouts and privacy-aware logging; keep generated answers separate from authored pages. Recheck eligibility before exposing answers, including caches. Test provider failures and unsupported questions; ordinary wiki operation must not require a model."
+    },
+    {
+      "key": "ui",
+      "title": "MCP/RAG - Add Ask the wiki UI and source inspection",
+      "column": "To do",
+      "depends_on": [
+        "answers"
+      ],
+      "notes": "Add an accessible Ask the wiki experience with clear generated-answer labeling, supporting excerpts and links, no-answer/conflicting-source states, loading/cancel/error states, indexing freshness and feedback. Saving generated text to a page is an explicit reviewed action. Preserve existing search/editor/attachment flows. Verify keyboard, mobile, cross-account isolation and stale-source behavior. Present provider privacy choices without exposing implementation clutter."
+    },
+    {
+      "key": "rollout",
+      "title": "MCP/RAG - Package, version and validate reproducible rollout",
+      "column": "To do",
+      "depends_on": [
+        "agent-acceptance",
+        "ui"
+      ],
+      "notes": "Version the MCP adapter independently; isolate optional AI dependencies from the basic five-widget install. Put private endpoints, keys and model/deployment settings in Dashboard-Personal. Add repeatable worker deployment, health/status reporting, rebuild/rollback and upgrade documentation. Validate existing data/search/backups and failure recovery in isolated development, record benchmark/citation evidence and test a supported client setup. Retain legacy Dashboard-compatible config/URLs. Do not push, deploy production or expose private content as part of implementation without the applicable authorization."
+    },
+    {
+      "key": "remote",
+      "title": "MCP/RAG - Add remote HTTPS MCP and user authorization",
+      "column": "Backlog",
+      "depends_on": [
+        "mcp-read"
+      ],
+      "notes": "Add streamable HTTP with HTTPS and standards-compliant user authorization for remote clients. Enforce account/scopes server-side, support revocation and client setup, test origin/token boundaries and keep stdio compatibility. Reassess hosting and authentication requirements before implementation."
+    },
+    {
+      "key": "widgets",
+      "title": "MCP/RAG - Define optional widget MCP tool registration",
+      "column": "Backlog",
+      "depends_on": [
+        "mcp-read"
+      ],
+      "notes": "Design a versioned opt-in tool contribution contract so selected widgets can register narrowly scoped tools. Detect naming conflicts, expose only enabled/granted services and preserve independent widget versions. Avoid automatic exposure of every widget route; test same-name providers and disabled widgets."
+    },
+    {
+      "key": "rerank",
+      "title": "MCP/RAG - Evaluate optional retrieval reranking",
+      "column": "Backlog",
+      "depends_on": [
+        "semantic"
+      ],
+      "notes": "Benchmark a separate optional reranker against the fixed retrieval evaluation set. Ship only if relevance gains justify latency, resource use and maintenance; preserve fallback and provider independence."
+    },
+    {
+      "key": "ocr",
+      "title": "MCP/RAG - Improve attachment extraction and citation locators",
+      "column": "Backlog",
+      "depends_on": [
+        "keyword"
+      ],
+      "notes": "Improve OCR and document extraction fidelity and retain page/section/offset provenance. Reindex affected attachments using extraction versioning; never invent document page numbers. Test scanned PDFs, tables, failures and locale needs with sanitized fixtures."
+    },
+    {
+      "key": "history",
+      "title": "MCP/RAG - Add explicit historical-revision retrieval",
+      "column": "Backlog",
+      "depends_on": [
+        "keyword"
+      ],
+      "notes": "Allow opt-in searches of historical wiki revisions with clear time/revision labels, stable citations and retention/ownership enforcement. Keep current-only default and do not mix obsolete instructions into current answers silently."
+    },
+    {
+      "key": "inbox",
+      "title": "MCP/RAG - Add optional wiki inbox retrieval controls",
+      "column": "Backlog",
+      "depends_on": [
+        "keyword"
+      ],
+      "notes": "Add explicit account-owned inclusion controls for fleeting/inbox notes and related attachments. Default off; support immediate exclusion and reconciliation when a note becomes a page. Preserve note identity, ownership and processing workflow."
+    },
+    {
+      "key": "cross-widget",
+      "title": "MCP/RAG - Extend retrieval to selected utility sources",
+      "column": "Backlog",
+      "depends_on": [
+        "widgets",
+        "semantic"
+      ],
+      "notes": "Design source adapters for opted-in utilities, potentially zettelkasten and Kanban. Preserve source/widget identities, ownership, disabled-widget behavior and per-source inclusion/retention controls. Avoid indexing private utilities into public artifacts or exposing unselected providers. Measure relevance and provenance before enabling new sources."
+    }
+  ]
+}

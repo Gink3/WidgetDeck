@@ -101,3 +101,18 @@
 #item-comments p { white-space: pre-wrap; overflow-wrap: anywhere; }
 #item-comments button { margin-right: 8px; }
 #comment-body { height: auto; min-height: 80px; margin: 8px 0; }
+
+/* Efforts use compact, wrapping labels rather than extra card sections. */
+.kanban-effort-toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:.6rem; margin:.6rem 0; }
+.kanban-effort-toolbar label { display:grid; gap:.25rem; min-width:0; max-width:100%; }
+.kanban-effort-toolbar select { max-width:100%; }
+.effort-badges { display:flex; flex-wrap:wrap; gap:.25rem; padding:0 .6rem; }
+.effort-badge { font-size:.75rem; border:1px solid var(--border, #666); border-radius:1rem; padding:.1rem .5rem; overflow-wrap:anywhere; max-width:100%; }
+.effort-options { display:flex; flex-wrap:wrap; gap:.5rem 1rem; }
+.effort-options label { display:flex; align-items:center; gap:.35rem; overflow-wrap:anywhere; }
+.effort-options input[type=checkbox] { width:auto; }
+#item-efforts-section { min-width:0; margin:1rem 0; }
+#effort-manager { max-width:min(32rem, 92vw); }
+#effort-manager form { display:grid; gap:.5rem; margin:1rem 0; }
+#effort-related { margin:.5rem 0; }
+#effort-related-items { max-height:18rem; overflow:auto; overflow-wrap:anywhere; }
