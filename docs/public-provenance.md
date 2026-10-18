@@ -1,9 +1,9 @@
 # Public content and screening
 
 Every contribution must identify its source, author, license and permission to
-redistribute in the review description. Original project code is intended for
-MIT publication; final ownership and license approval remain a publication gate.
-Do not imply that an unreviewed snapshot or third-party corpus is MIT licensed.
+redistribute in the review description. Original project code uses the root MIT
+`LICENSE`. Review ownership and redistribution rights before adding source.
+Do not imply that a third-party corpus is covered by the project's MIT license.
 Retain dependency notices and the Wordle word-list source and MIT notice under
 `dashboard/wordle/`. Content packs and private extensions require separate rights
 review and do not inherit a public core license. Synthetic fixtures must be
