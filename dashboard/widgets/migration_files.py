@@ -130,6 +130,14 @@ def stage(proposed):
 def install(database, journal):
     root = pending(database)
     target = Path(database).resolve().parent / 'widget-storage' / journal['target_provider'] / journal['widget']
+    # Distinguish an interrupted staging pass from lost/tampered metadata after
+    # file publication began. Never clear the guard if that journal is missing.
+    with (root / 'installing').open('x') as stream:
+        stream.write('1\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+    (root / 'installing').chmod(0o600)
+    sync_directory(root)
     for entry in journal['entries']:
         destination = target / entry['path']
         destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -161,6 +169,10 @@ def recover(database, *, offline=False):
         # Staging may have stopped before journal publication; live files have
         # not been touched in that case.
         journal_path = root / 'journal.json'
+        if journal_path.is_symlink():
+            raise WidgetError('Migration recovery cannot use symbolic links.')
+        if not journal_path.exists() and (root / 'installing').exists():
+            raise WidgetError('Recovery journal is missing; pending state retained for manual review.')
         committed = False
         if journal_path.exists():
             if any(path.is_symlink() for path in (root, *root.rglob('*'))):

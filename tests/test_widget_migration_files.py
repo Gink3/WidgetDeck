@@ -229,6 +229,14 @@ execute(Manifest.from_dict(args['manifest']),args['database'],'original','1.0.0'
         self.assertEqual(outside.read_bytes(), b'preserve outside fixture')
         self.assertTrue(files.pending(self.database).exists())
 
+    def test_lost_journal_after_publication_never_clears_startup_guard(self):
+        proposed = self.crash(False)
+        (files.pending(self.database) / 'journal.json').unlink()
+        with self.assertRaisesRegex(WidgetError, 'journal is missing'):
+            files.recover(self.database, offline=True)
+        self.assertTrue((files.directory(proposed, 'target') / 'a.txt').exists())
+        self.assertTrue(files.pending(self.database).is_dir())
+
     def test_target_content_changes_also_invalidate_review(self):
         self.attachment()
         target = files.directory(self.proposed(), 'target') / 'keep.txt'
