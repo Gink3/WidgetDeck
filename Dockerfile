@@ -18,5 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 COPY --from=mindmap_frontend /static/mindmaps ./static/mindmaps
 
+LABEL org.opencontainers.image.title="WidgetDeck" \
+      org.opencontainers.image.source="https://github.com/Gink3/WidgetDeck"
+
 EXPOSE 8000
 CMD ["gunicorn", "--workers", "2", "--timeout", "300", "--bind", "0.0.0.0:8000", "app:app"]

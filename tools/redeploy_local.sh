@@ -2,19 +2,20 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PERSONAL_TOOL="${DASHBOARD_PERSONAL_TOOL:-${SCRIPT_DIR}/../../Dashboard-Personal/tools/manage.py}"
-if [[ "${DASHBOARD_CORE_ONLY:-0}" != "1" && -f "$PERSONAL_TOOL" ]]; then
-  exec python3 "$PERSONAL_TOOL" up --profile "${DASHBOARD_PERSONAL_PROFILE:-testing}" \
-    --image "${DASHBOARD_IMAGE:-dashboard:personal-testing}" \
-    --name "${DASHBOARD_CONTAINER:-dashboard-local}" --port "${DASHBOARD_PORT:-8020}" "$@"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PERSONAL_TOOL="${WIDGETDECK_PERSONAL_TOOL:-${DASHBOARD_PERSONAL_TOOL:-}}"
+if [[ "${WIDGETDECK_CORE_ONLY:-${DASHBOARD_CORE_ONLY:-0}}" != "1" && -n "$PERSONAL_TOOL" && -f "$PERSONAL_TOOL" ]]; then
+  exec python3 "$PERSONAL_TOOL" up --profile "${WIDGETDECK_PERSONAL_PROFILE:-${DASHBOARD_PERSONAL_PROFILE:-testing}}" \
+    --image "${WIDGETDECK_IMAGE:-${DASHBOARD_IMAGE:-widgetdeck:personal-testing}}" \
+    --name "${WIDGETDECK_CONTAINER:-${DASHBOARD_CONTAINER:-widgetdeck-local}}" --port "${WIDGETDECK_PORT:-${DASHBOARD_PORT:-8020}}" "$@"
 fi
 
-IMAGE_NAME="${DASHBOARD_IMAGE:-dashboard:local}"
-CONTAINER_NAME="${DASHBOARD_CONTAINER:-dashboard-local}"
-HOST_PORT="${DASHBOARD_PORT:-8020}"
-HOST_BIND="${DASHBOARD_BIND:-127.0.0.1}"
+IMAGE_NAME="${WIDGETDECK_IMAGE:-${DASHBOARD_IMAGE:-widgetdeck:local}}"
+CONTAINER_NAME="${WIDGETDECK_CONTAINER:-${DASHBOARD_CONTAINER:-widgetdeck-local}}"
+HOST_PORT="${WIDGETDECK_PORT:-${DASHBOARD_PORT:-8020}}"
+HOST_BIND="${WIDGETDECK_BIND:-${DASHBOARD_BIND:-127.0.0.1}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="${DASHBOARD_DATA_DIR:-${SCRIPT_DIR}/../instance}"
+DATA_DIR="${WIDGETDECK_DATA_DIR:-${DASHBOARD_DATA_DIR:-${PROJECT_ROOT}/instance}}"
 ADMIN_USERNAME="${DASHBOARD_ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${DASHBOARD_ADMIN_PASSWORD:-password}"
 KANBAN_ENV_FILE="${DASHBOARD_KANBAN_ENV_FILE:-${SCRIPT_DIR}/../.env.kanban}"
@@ -42,7 +43,7 @@ else
   printf '%s\n' "$SECRET_KEY" > "$SECRET_FILE"
 fi
 echo "Building $IMAGE_NAME..."
-docker build -t "$IMAGE_NAME" .
+docker build -t "$IMAGE_NAME" "$PROJECT_ROOT"
 if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1 && [[ ! -e "${DATA_DIR}/dashboard.sqlite" ]]; then
   echo "Preserving existing dashboard data..."
   docker cp "${CONTAINER_NAME}:/app/instance/." "$DATA_DIR/" 2>/dev/null || true
@@ -60,7 +61,7 @@ URL="http://127.0.0.1:${HOST_PORT}/"
 echo "Waiting for $URL..."
 for attempt in $(seq 1 30); do
   if curl --fail --silent "$URL" >/dev/null; then
-    echo "Dashboard is running at $URL"
+    echo "WidgetDeck is running at $URL"
     exit 0
   fi
   sleep 1

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOCAL_IMAGE="${DASHBOARD_IMAGE:-dashboard:latest}"
-ZOT_IMAGE="${DASHBOARD_ZOT_IMAGE:-192.168.0.245:8568/dashboard:latest}"
+LOCAL_IMAGE="${WIDGETDECK_IMAGE:-${DASHBOARD_IMAGE:-widgetdeck:latest}}"
+ZOT_IMAGE="${WIDGETDECK_ZOT_IMAGE:-${DASHBOARD_ZOT_IMAGE:-192.168.0.245:8568/widgetdeck:latest}}"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "Building $LOCAL_IMAGE..."
