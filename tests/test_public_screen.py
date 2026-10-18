@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 
@@ -37,6 +38,7 @@ class PublicScreenTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     screen.load_fingerprints(path, required=True)
 
+    @unittest.skipUnless(shutil.which('git'), 'Git index fixture requires the host Git tool')
     def test_staged_screen_uses_index_not_worktree(self):
         with tempfile.TemporaryDirectory() as folder:
             subprocess.run(['git', 'init', '-q', folder], check=True)
