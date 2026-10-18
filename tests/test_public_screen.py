@@ -20,7 +20,8 @@ class PublicScreenTests(unittest.TestCase):
 
     def test_private_generated_and_secret_inputs_fail(self):
         for path in ('.env.production', '.aws/config', 'instance/data.sqlite',
-                     'content-packs/example/data.json', 'frontend/node_modules/a.js', 'static/mindmaps/bundle.js'):
+                     'content-packs/example/data.json', 'frontend/node_modules/a.js', 'static/mindmaps/bundle.js',
+                     'custom.sqlite.widget-migration-pending/journal.json', 'widget-migration-backups/saved.bin'):
             self.assertTrue(screen.reasons(path, b'synthetic', set()), path)
         secret = b'-----BEGIN ' + b'PRIVATE KEY-----'
         self.assertTrue(screen.reasons('unexpected.txt', secret, set()))

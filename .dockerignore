@@ -25,3 +25,5 @@
 **/.aws
 **/.codex
 static/mindmaps/
+**/*.widget-migration-pending
+**/widget-migration-backups

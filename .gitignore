@@ -19,3 +19,5 @@ instance/flashcard_uploads/
 
 # Private runtime state is supplied by the persistent instance mount.
 instance/
+*.widget-migration-pending/
+widget-migration-backups/

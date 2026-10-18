@@ -1,4 +1,4 @@
-"""Explicit offline SQLite migrations; runtime registration never calls hooks."""
+"""Reviewed offline storage migrations; runtime registration never calls hooks."""
 from contextlib import closing
 from datetime import datetime, timezone
 import secrets
@@ -12,6 +12,7 @@ from packaging.version import InvalidVersion, Version
 from dashboard.database import timestamp
 from .manifest import API_VERSION, WidgetError, slug
 from .storage import _legacy
+from . import migration_files as files
 
 TABLE = 'widget_provider_migrations'
 
@@ -40,13 +41,15 @@ def _managed_files(database, provider, widget):
         for path in directory.rglob('*'):
             if path.is_symlink():
                 raise WidgetError('Migration storage cannot contain symbolic links.')
+            if not path.is_file() and not path.is_dir():
+                raise WidgetError('Migration storage contains an unsupported special file.')
             if path.is_file() and str(path.relative_to(directory)) not in {'data.sqlite', 'data.sqlite-wal',
                                                     'data.sqlite-shm', 'data.sqlite-journal'}:
                 files.append(str(path.relative_to(directory)))
     return sorted(files)
 
 
-def plan(manifest, database, from_provider, from_version, to_version):
+def plan(manifest, database, from_provider, from_version, to_version, *, copy_files=False):
     """Read metadata and existing bindings only; never import code or create files."""
     if API_VERSION not in manifest.core_api:
         raise WidgetError('Migration target is incompatible with this core API.')
@@ -64,6 +67,8 @@ def plan(manifest, database, from_provider, from_version, to_version):
         raise WidgetError('Target does not declare compatibility with this source/version.')
     seed = dict(database=str(database), source=identity, from_version=from_version,
                 target_manifest=manifest.to_dict())
+    if copy_files:
+        seed['copy_files'] = True
     request_id = hashlib.sha256(json.dumps(seed, sort_keys=True).encode()).hexdigest()
     try:
         with closing(_connect_readonly(database)) as connection:
@@ -84,17 +89,23 @@ def plan(manifest, database, from_provider, from_version, to_version):
                 raise WidgetError('Stored source provider/version differs from the reviewed migration.')
             source = _path(database, from_provider, manifest.id, row[2])
             target = _path(database, manifest.provider, manifest.id, kind)
-            ident = hashlib.sha256(json.dumps(dict(request_id=request_id,
-                from_kind=row[2], source_database=str(source), target_database=str(target)),
-                sort_keys=True).encode()).hexdigest()
-            return dict(plan_id=ident, request_id=request_id, widget=manifest.id, from_provider=from_provider,
+            result = dict(request_id=request_id, widget=manifest.id, from_provider=from_provider,
                 from_version=row[1], from_kind=row[2], to_provider=manifest.provider,
                 to_version=to_version, to_kind=kind, database=str(database),
                 source_database=str(source), target_database=str(target),
                 entry_point=declaration.entry_point, already_applied=False,
                 source_files=_managed_files(database, from_provider, manifest.id),
                 target_files=_managed_files(database, manifest.provider, manifest.id))
-    except sqlite3.Error as error:
+            identity = dict(request_id=request_id, from_kind=row[2],
+                            source_database=str(source), target_database=str(target))
+            if copy_files:
+                result.update(copy_files=True,
+                    source_file_hashes=files.fingerprints(result, 'source'),
+                    target_file_hashes=files.fingerprints(result, 'target'))
+                identity.update(source_files=result['source_file_hashes'], target_files=result['target_file_hashes'])
+            result['plan_id'] = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+            return result
+    except (sqlite3.Error, OSError) as error:
         raise WidgetError('Cannot read stored migration bindings; no changes made.') from error
 
 
@@ -126,30 +137,60 @@ def _backup(proposed):
         with closing(_connect_readonly(path)) as source, closing(sqlite3.connect(target)) as copied, copied:
             source.backup(copied)
         target.chmod(0o600)
+    if proposed.get('copy_files'):
+        files.backup_files(proposed, destination)
     return str(destination)
 
 
 def execute(manifest, database, from_provider, from_version, to_version, *,
-            plan_id, offline=False):
+            plan_id, offline=False, copy_files=False):
     """Apply a reviewed plan atomically; caller must stop the application first.
 
     Hooks receive (read_only_source_connection, transactional_target_connection).
-    SQLite-only: managed files require a future file-aware migration/recovery path.
+    Managed files are copied unchanged only with explicit copy_files approval.
     Plugins remain trusted Python code; authorizers protect accidental SQL misuse.
     """
     if not offline:
         raise WidgetError('Stop the application and explicitly confirm offline operation.')
-    proposed = plan(manifest, database, from_provider, from_version, to_version)
+    files.require_recovered(database)
+    proposed = plan(manifest, database, from_provider, from_version, to_version, copy_files=copy_files)
     if proposed['plan_id'] != plan_id:
         raise WidgetError('Plan changed; review a new dry-run plan before migration.')
     if proposed['already_applied']:
         return proposed
-    if proposed['source_files'] or proposed['target_files']:
+    if (proposed['source_files'] or proposed['target_files']) and not copy_files:
         raise WidgetError('File-bearing stores require file-aware migration support; no changes made.')
+    pending = files.pending(database)
+    if copy_files:
+        try:
+            pending.mkdir(mode=0o700)
+            files.sync_directory(pending.parent)
+        except OSError as error:
+            raise WidgetError('Cannot reserve file migration; recover any unfinished operation first.') from error
     try:
         proposed['backup_directory'] = _backup(proposed)
     except (OSError, sqlite3.Error) as error:
+        if copy_files:
+            files.recover(database, offline=True)
         raise WidgetError('Cannot back up migration stores; provider binding unchanged.') from error
+    try:
+        journal = files.stage(proposed) if copy_files else None
+        if copy_files and plan(manifest, database, from_provider, from_version, to_version,
+                               copy_files=True)['plan_id'] != plan_id:
+            raise WidgetError('Plan changed during staging; review a new dry-run plan.')
+        result = _execute_sql(manifest, proposed, to_version, journal)
+    except Exception as error:
+        if copy_files:
+            files.recover(database, offline=True)
+        if isinstance(error, WidgetError):
+            raise
+        raise WidgetError('Migration staging failed; provider binding unchanged.') from error
+    if copy_files:
+        files.recover(database, offline=True)
+    return result
+
+
+def _execute_sql(manifest, proposed, to_version, journal=None):
     target_path = Path(proposed['target_database'])
     target_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -190,7 +231,9 @@ def execute(manifest, database, from_provider, from_version, to_version, *,
             target.execute(f'UPDATE {schema}.widget_provider_bindings SET provider=?,version=?,storage_kind=? WHERE widget_id=?',
                 (manifest.provider, to_version, proposed['to_kind'], manifest.id))
             target.execute(f'INSERT INTO {schema}.{TABLE} VALUES(?,?,?,?)',
-                (plan_id, proposed['request_id'], json.dumps(proposed, sort_keys=True), timestamp()))
+                (proposed['plan_id'], proposed['request_id'], json.dumps(proposed, sort_keys=True), timestamp()))
+            if journal is not None:
+                files.install(proposed['database'], journal)
     except WidgetError:
         raise
     except Exception as error:

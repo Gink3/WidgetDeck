@@ -220,10 +220,9 @@ Widgets must enforce account ownership themselves. The shared `dashboard.databas
 helper remains available for backward compatibility; new providers should use their
 own storage. These are trusted-code contracts, not a sandbox against malicious code.
 
-**Remaining work in card #78:** file-aware migration and recovery. The explicit
-SQLite migration workflow below now supports reviewed provider replacement;
-file-bearing managed stores are rejected until that additional work is ready.
-Disabling and re-enabling the same provider needs no migration.
+The explicit offline workflow below supports reviewed provider replacement.
+File copying requires separate review and opt-in. Disabling and re-enabling the
+same provider needs no migration.
 
 ## Reviewed offline SQLite migrations (API 1.3)
 
@@ -286,9 +285,52 @@ For separate target/registry files, both must use durable rollback journals
 configuration. This follows SQLite's [attached-database atomicity conditions](https://www.sqlite.org/lang_attach.html).
 Single-database legacy targets retain SQLite's normal transaction semantics.
 
-Only SQLite data is transformed by this runner. Non-database managed files and
-symlinks reject execution before any hook imports. Existing legacy files outside
-the managed namespace remain in place; authors/operators must review external
-file references. File migration/staging/recovery remains open in #78. Hooks are
-trusted Python code: SQL authorizers prevent accidental transaction/registry
-misuse, and do not sandbox arbitrary code or external side effects.
+Without file-copy opt-in, non-database managed files reject execution before any
+hook imports. Symlinks and special files are always rejected. Existing legacy
+files outside the managed namespace remain in place; authors/operators must
+review external file references. Hooks are trusted Python code: SQL authorizers
+prevent accidental transaction/registry misuse, and do not sandbox arbitrary
+code or external side effects.
+
+### Managed files and interrupted migrations
+
+Add `--copy-files` to both the dry run and reviewed execution to copy the source
+provider's managed files into the target namespace without changing their names
+or bytes. This opt-in is part of the reviewed plan, as are hashes of source and
+target files. Changed content invalidates approval, including changes during
+staging. The two-connection SQL hook API remains unchanged; file transformation,
+renaming and migration of files outside `context.storage.directory` require a
+separately reviewed operator procedure. No file mapping is inferred.
+
+Existing identical target files and target-only files remain intact. A differing
+file at the same target path stops execution without overwriting it. Nested
+SQLite files are recognized by their header and copied with SQLite's backup API,
+including committed WAL records; WAL/shared-memory/journal sidecars are not copied.
+The main provider database is transformed by the declared SQL hook. Source stores
+and preferences remain intact. Private automatic backups also include these
+managed files and secondary SQLite snapshots.
+
+File-aware execution reserves a private pending directory next to the registry
+database, stages snapshots, and durably records recovery metadata before linking
+any new target files. Links are atomic and never overwrite existing paths. The
+staging and target directories must support hard links on the same filesystem;
+unsupported links fail safely. Keep the application's filesystems on durable
+storage with working fsync semantics. Do not modify recovery state or run recovery
+concurrently with the migration. All application/worker processes must stay stopped.
+
+An exception rolls back SQL and removes only this operation's new files. Process
+exit or power interruption may leave pending state; widget initialization and
+Personal preflight refuse it. Keep the app stopped and run:
+
+```sh
+python -m dashboard.widgets recover-migration \
+  --database /path/to/instance/dashboard.sqlite --offline
+```
+
+Recovery first lets SQLite recover its journals, then uses the committed migration
+ledger to retain/finish file installation or remove uncommitted copies. It never
+deletes the old source namespace or preexisting target files. Recovery is repeatable;
+after it succeeds, repeat the originally reviewed migration or start the selected
+provider as appropriate. An exact completed-plan repeat does not rerun the hook.
+Unexpected file edits or missing/corrupt recovery data stop recovery for manual
+review; retain pending state and backups rather than clearing the startup guard.

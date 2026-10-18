@@ -78,6 +78,8 @@ def prepare(app, manifests):
         slug(manifest.provider, 'provider')
     init_database(app)
     database = Path(app.config['FOUR_AD_DATABASE']).resolve()
+    from .migration_files import require_recovered
+    require_recovered(database)
     root = database.parent / 'widget-storage'
     storage = {}
     with closing(sqlite3.connect(database)) as connection, connection:
