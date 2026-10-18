@@ -85,3 +85,20 @@ Native production effort assignment is pending deployment of #118; the snapshot
 is evidence, not hardcoded IDs used by the synchronizer. Production deployment
 remains a manual user step. Dashboard archival is also being handled manually by
 the user; all new implementation belongs in WidgetDeck.
+
+## Implementation verification and remaining handoff
+
+Kanban effort support is implemented in `f493426`; the plan/synchronizer is in
+`270ef39`. The application regression suite passed 222 tests with 19 skips,
+including upgrade, ownership and browser cases. The built image also passed
+an authenticated, disposable container check without external network access.
+Eight plan synchronizer integration checks passed, including all nineteen cards
+and sequential reruns. Existing preview containers and production were retained.
+
+During handoff, the retired Dashboard working copy's Python environment and
+credential file became unavailable. Earlier credential screening found no matches;
+the final repeat scan could not run against the removed credential baseline.
+The live #118 completion-note/status update requires the relocated private
+credential-file path. Native effort assignment still requires deployment followed
+by an explicit synchronizer apply. No credentials should be restored into tracked
+files or committed to either repository.
