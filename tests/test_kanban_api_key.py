@@ -49,6 +49,9 @@ class KanbanApiKeyTests(unittest.TestCase):
                              ('POST', f'/api/tools/kanban/boards/{self.board}/items'),
                              ('POST', '/api/tools/kanban/items/1/transfer'),
                              ('DELETE', '/api/tools/kanban/items/1'),
+                             ('POST', '/api/tools/kanban/efforts'),
+                             ('PUT', '/api/tools/kanban/items/1/efforts'),
+                             ('DELETE', '/api/tools/kanban/efforts/1'),
                              ('GET', '/tools/kanban'), ('GET', '/tools/wiki/api/pages')]:
             self.assertEqual(self.client.open(path, method=method, headers=self.headers).status_code, 401)
         self.assertEqual(self.client.get('/api/tools/kanban/boards', headers={'Authorization': 'Bearer wrong'}).status_code, 401)

@@ -3,7 +3,7 @@
   "id": "kanban",
   "provider": "dashboard",
   "name": "Kanban",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "core_api": ">=1.1,<2",
   "entry_point": "dashboard.widgets.bundled:register_widget",
   "dependencies": {},

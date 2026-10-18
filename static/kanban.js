@@ -32,7 +32,11 @@
   $('#add-column-form').addEventListener('submit', e => changeColumns(e, false));
   $('#remove-column-form').addEventListener('submit', e => changeColumns(e, true));
   const columnOrder = () => columnSections().map((section) => Number(section.dataset.column));
-  const search = $('#kanban-search');
+  const search = $('#kanban-search'), effortFilter = $('#effort-filter');
+  const efforts = JSON.parse($('#kanban-efforts-data').textContent);
+  const initialEffort = new URLSearchParams(location.search).get('effort');
+  if ([...effortFilter.options].some(o => o.value === initialEffort)) effortFilter.value = initialEffort;
+  const filtering = () => Boolean(search.value.trim() || effortFilter.value);
   let commentSaving = false;
   let selected = null, dirty = false, saving = false, moving = false, requestNumber = 0, dragged = null, ignoreClickUntil = 0;
   const date = (value) => new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
@@ -51,12 +55,15 @@
     const query = search.value.trim().toLocaleLowerCase();
     let matches = 0, total = 0;
     board.querySelectorAll('.kanban-card').forEach((card) => {
-      const match = /^#\d+$/.test(query) ? Number(query.slice(1)) === Number(card.dataset.item)
+      const textMatch = /^#\d+$/.test(query) ? Number(query.slice(1)) === Number(card.dataset.item)
         : card.querySelector('.kanban-card-title').textContent.toLocaleLowerCase().includes(query);
+      const ids = card.dataset.efforts ? card.dataset.efforts.split(',') : [];
+      const match = textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
       card.hidden = !match; matches += Number(match); total++;
     });
     $('#clear-kanban-search').disabled = !query;
-    $('#kanban-search-count').textContent = query ? `${matches} of ${total} items · clear search to reorder cards` : '';
+    $('#clear-effort-filter').disabled = !effortFilter.value;
+    $('#kanban-search-count').textContent = filtering() ? `${matches} of ${total} items · clear filters to reorder cards` : '';
     columnSections().forEach((section, index, all) => {
       section.draggable = columnMode && !moving;
       section.querySelector('.column-order-controls').hidden = !columnMode;
@@ -66,12 +73,12 @@
     board.querySelectorAll('.kanban-column').forEach((col) => {
       const cards = cardsIn(col);
       const visible = cards.filter((card) => !card.hidden).length;
-      col.querySelector('.column-count').textContent = query ? `${visible} / ${cards.length}` : cards.length;
+      col.querySelector('.column-count').textContent = filtering() ? `${visible} / ${cards.length}` : cards.length;
       col.querySelector('.kanban-dropzone').classList.toggle('is-empty', visible === 0);
       cards.forEach((card, index) => {
-        card.querySelector('[data-reorder="up"]').disabled = Boolean(query) || moving || index === 0;
-        card.querySelector('[data-reorder="down"]').disabled = Boolean(query) || moving || index === cards.length - 1;
-        card.draggable = !query && !columnMode && !moving && !saving;
+        card.querySelector('[data-reorder="up"]').disabled = filtering() || moving || index === 0;
+        card.querySelector('[data-reorder="down"]').disabled = filtering() || moving || index === cards.length - 1;
+        card.draggable = !filtering() && !columnMode && !moving && !saving;
       });
     });
   }
@@ -80,12 +87,15 @@
     card.classList.toggle('is-cancelled', Boolean(item.cancelled_at));
     card.querySelector('.cancelled-badge').hidden = !item.cancelled_at;
     card.dataset.revision = item.revision;
+    card.dataset.efforts = (item.efforts || []).map(e => e.id).join(',');
+    const badges = card.querySelector('.effort-badges'); badges.replaceChildren();
+    (item.efforts || []).forEach(e => { const badge = document.createElement('span'); badge.className = 'effort-badge'; badge.textContent = e.name; badges.append(badge); });
     card.querySelector('.kanban-card-title').textContent = item.title;
     card.querySelector('.kanban-card-notes').textContent = item.notes;
     card.querySelector('.kanban-card-notes').hidden = !item.notes;
     const zone = zoneFor(item.column_id);
     if (card.parentElement !== zone) zone.append(card);
-    updateCounts();
+    updateCounts(); showRelated();
   }
   function renderHistory(item) {
     const list = $('#item-history'); list.replaceChildren();
@@ -119,7 +129,7 @@
     form.hidden = false; $('#item-history-section').hidden = false;
     transferForm.hidden = false;
     $('#item-actions').hidden = false; $('#cancel-item').textContent = item.cancelled_at ? 'Restore item' : 'Cancel item';
-    renderHistory(item); renderComments(item); renderLinks(item);
+    renderHistory(item); renderComments(item); renderLinks(item); renderEfforts(item);
   }
   function renderLinks(item) {
     $('#item-links-section').hidden = false;
@@ -206,7 +216,7 @@
     detail.hidden = false; $('.kanban-workspace').classList.add('detail-open');
     form.hidden = true; $('#item-history-section').hidden = true; selectCard(id);
     transferForm.hidden = true;
-    $('#item-actions').hidden = true;
+    $('#item-actions').hidden = true; $('#item-efforts-section').hidden = true;
     $('#item-comments-section').hidden = true; $('#item-links-section').hidden = true;
     detailStatus('Loading item…'); $('#close-detail').focus();
     try {
@@ -325,7 +335,7 @@
   $('#delete-item').addEventListener('click', () => itemAction(true));
   async function moveCard(card, zone, before = null) {
     if (moving || saving) return;
-    if (search.value.trim()) { announce('Clear search before reordering cards.', true); return; }
+    if (filtering()) { announce('Clear filters before reordering cards.', true); return; }
     if (selected?.id === Number(card.dataset.item) && dirty) { announce('Save the open item’s changes before moving it.', true); return; }
     const origin = card.parentElement, next = card.nextElementSibling;
     if (origin === zone && (before === card || before === next)) return;
@@ -365,7 +375,7 @@
       event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', draggedColumn.dataset.column); return;
     }
     const card = event.target.closest('.kanban-card');
-    if (!card || search.value.trim() || moving || saving || (selected?.id === Number(card.dataset.item) && dirty)) { event.preventDefault(); return; }
+    if (!card || filtering() || moving || saving || (selected?.id === Number(card.dataset.item) && dirty)) { event.preventDefault(); return; }
     dragged = card; card.classList.add('is-dragging'); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', card.dataset.item);
   });
   board.addEventListener('dragend', () => { dragged?.classList.remove('is-dragging'); dragged = null; draggedColumn = null; ignoreClickUntil = Date.now() + 200; clearTargets(); });
@@ -401,11 +411,101 @@
   });
   document.querySelectorAll('.new-card form').forEach((newForm) => newForm.addEventListener('submit', (event) => { if (!canLeave()) event.preventDefault(); else dirty = false; }));
   window.addEventListener('beforeunload', (event) => { if (dirty || saving || moving || commentSaving || $('#comment-body').value.trim()) { event.preventDefault(); event.returnValue = ''; } });
+  function renderEfforts(item) {
+    $('#item-efforts-section').hidden = false;
+    const options = $('#item-effort-options'); options.replaceChildren();
+    if (!efforts.length) { options.textContent = 'No efforts yet.'; return; }
+    efforts.forEach(effort => {
+      const label = document.createElement('label'), checkbox = document.createElement('input');
+      checkbox.type = 'checkbox'; checkbox.value = effort.id;
+      checkbox.checked = (item.efforts || []).some(e => e.id === effort.id);
+      label.append(checkbox, document.createTextNode(effort.name)); options.append(label);
+      checkbox.addEventListener('change', async () => {
+        if (!selected || dirty || saving || moving || commentSaving) {
+          renderEfforts(selected || item); detailStatus('Save your item edits before changing efforts.', true); return;
+        }
+        const ids = [...options.querySelectorAll('input:checked')].map(c => Number(c.value));
+        const controls = [...detail.querySelectorAll('input,textarea,select,button')];
+        const disabled = controls.map(c => c.disabled);
+        saving = true; controls.forEach(c => { c.disabled = true; }); updateCounts();
+        try {
+          const updated = await api(selected.id, {method:'PUT',body:JSON.stringify({effort_ids:ids,revision:selected.revision})}, '/efforts');
+          fillDetail(updated); updateCard(updated); detailStatus('Efforts saved.');
+        } catch(error) { renderEfforts(selected); detailStatus(error.message, true); }
+        finally { saving = false; controls.forEach((c,i) => { c.disabled = disabled[i]; }); updateCounts(); }
+      });
+    });
+  }
+  let relatedRequest = 0;
+  async function showRelated() {
+    const number = ++relatedRequest, value = effortFilter.value;
+    const container = $('#effort-related'), list = $('#effort-related-items'); list.replaceChildren();
+    container.hidden = !value || value === 'untagged';
+    if (container.hidden) return;
+    try {
+      const response = await fetch(`/api/tools/kanban/efforts/${value}/items`), data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to load related items.');
+      if (number !== relatedRequest) return;
+      data.items.forEach(item => {
+        const li = document.createElement('li'), link = document.createElement('a');
+        link.href = `/tools/kanban?board=${item.board_id}&item=${item.id}&effort=${value}`;
+        link.textContent = `#${item.id} · ${item.title} · ${item.board_name} · ${item.cancelled_at ? 'Cancelled' : item.column_name}`;
+        link.addEventListener('click',event => { if (!canLeave()) event.preventDefault(); });
+        li.append(link); list.append(li);
+      });
+      if (!data.items.length) list.textContent = 'No items in this effort yet.';
+    } catch(error) { if (number === relatedRequest) list.textContent = error.message; }
+  }
+  function filterEfforts() {
+    const url = new URL(location.href);
+    if (effortFilter.value) url.searchParams.set('effort', effortFilter.value); else url.searchParams.delete('effort');
+    history.replaceState(null, '', url); updateCounts(); showRelated();
+  }
+  effortFilter.addEventListener('change', filterEfforts);
+  $('#clear-effort-filter').addEventListener('click', () => { effortFilter.value = ''; filterEfforts(); effortFilter.focus(); });
+  $('#manage-efforts').addEventListener('click', () => {
+    if (!canLeave()) return;
+    // Leave drafts intact unless the user subsequently confirms a manager write.
+    $('#effort-manager').showModal();
+  });
+  $('#close-effort-manager').addEventListener('click', () => $('#effort-manager').close());
+  $('#manage-effort-id').addEventListener('change', event => {
+    const option = event.target.selectedOptions[0];
+    $('#rename-effort-name').value = event.target.value ? option.textContent : '';
+    $('#rename-effort').disabled = !event.target.value; $('#delete-effort').disabled = !event.target.value;
+  });
+  let effortSaving = false;
+  async function manageEffort(method) {
+    if (effortSaving || !canLeave()) return;
+    const option = $('#manage-effort-id').selectedOptions[0];
+    if (method !== 'POST' && !option.value) return;
+    if (method === 'DELETE' && !window.confirm(`Remove effort “${option.textContent}” from all your cards? Cards will be kept.`)) return;
+    effortSaving = true;
+    const dialogControls = [...$('#effort-manager').querySelectorAll('button,input,select')];
+    const disabled = dialogControls.map(c => c.disabled); dialogControls.forEach(c => { c.disabled = true; });
+    try {
+      const response = await fetch('/api/tools/kanban/efforts' + (method === 'POST' ? '' : `/${option.value}`), {
+        method, headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:$(method === 'POST' ? '#new-effort-name' : '#rename-effort-name').value, revision:Number(option.dataset.revision)})
+      });
+      const data = response.status === 204 ? {} : await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to change effort.');
+      dirty = false; $('#comment-body').value = ''; location.reload();
+    } catch(error) { $('#effort-manager-status').textContent = error.message; }
+    finally { effortSaving = false; dialogControls.forEach((c,i) => { c.disabled = disabled[i]; }); }
+  }
+  $('#create-effort-form').addEventListener('submit', event => { event.preventDefault(); manageEffort('POST'); });
+  $('#edit-effort-form').addEventListener('submit', event => { event.preventDefault(); manageEffort('PATCH'); });
+  $('#delete-effort').addEventListener('click', () => manageEffort('DELETE'));
+  showRelated();
   search.addEventListener('input', updateCounts);
   $('#clear-kanban-search').addEventListener('click', () => { search.value = ''; updateCounts(); search.focus(); });
   updateCounts();
   window.addEventListener('popstate',()=>{
-    const id=new URLSearchParams(location.search).get('item');
+    const params = new URLSearchParams(location.search), id=params.get('item');
+    const effort=params.get('effort') || '';
+    effortFilter.value = [...effortFilter.options].some(o => o.value === effort) ? effort : '';
+    updateCounts(); showRelated();
     if(!canLeave()){itemAddress(selected?.id);return;}
     dirty=false;$('#comment-body').value='';
     if(id&&cardFor(Number(id)))openItem(Number(id));else{closeDetail();if(id)announce('Item not found on this board.',true);}

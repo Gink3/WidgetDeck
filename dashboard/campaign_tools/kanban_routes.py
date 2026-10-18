@@ -21,9 +21,9 @@ def kanban():
     board_id = request.args.get("board", type=int)
     selected = models.kanban_board(board_id) if board_id else (boards[0] if boards else None)
     columns = models.kanban_columns(selected["id"]) if selected else []
-    raw_items = models.kanban_items(selected["id"]) if selected else []
+    raw_items = models.attach_efforts([dict(r) for r in models.kanban_items(selected["id"])]) if selected else []
     items = {column["id"]: [item for item in raw_items if item["column_id"] == column["id"]] for column in columns}
-    return render_template("campaign_tools/kanban.html", boards=boards, selected=selected, columns=columns, items=items)
+    return render_template("campaign_tools/kanban.html", boards=boards, selected=selected, columns=columns, items=items, efforts=models.kanban_efforts())
 
 
 
@@ -55,7 +55,7 @@ def kanban_create_item(board_id):
     if type(payload.get("column_id")) is not int:
         return jsonify(error="A destination column is required."), 400
     try:
-        item_id = models.add_kanban_item(board_id, payload["column_id"], title.strip(), notes)
+        item_id = models.add_kanban_item(board_id, payload["column_id"], title.strip(), notes, payload.get("effort_ids"))
     except ValueError as error:
         return jsonify(error=str(error)), 400
     if item_id is None:
@@ -253,3 +253,37 @@ def kanban_update_links(item_id):
     except models.ItemConflict as error:return jsonify(error=str(error)),409
     except ValueError as error:return jsonify(error=str(error)),400
     return jsonify(item=item) if item else (jsonify(error='Item not found.'),404)
+
+
+@campaign_tools.route('/api/tools/kanban/efforts',methods=['GET','POST'])
+@campaign_tools.route('/api/tools/kanban/efforts/<int:effort_id>',methods=['PATCH','DELETE'])
+@login_required
+def kanban_manage_effort(effort_id=None):
+    if request.method=='GET':return jsonify(efforts=models.kanban_efforts())
+    payload=request.get_json(silent=True)
+    if not isinstance(payload,dict):return jsonify(error='Supply a JSON object.'),400
+    try:
+        result=models.change_kanban_effort(payload.get('name'),effort_id,payload.get('revision'),request.method=='DELETE')
+    except models.ItemConflict as error:return jsonify(error=str(error)),409
+    except ValueError as error:return jsonify(error=str(error)),400
+    if result is None:return jsonify(error='Effort not found.'),404
+    if request.method=='DELETE':return '',204
+    return jsonify(effort=result),201 if request.method=='POST' else 200
+
+
+@campaign_tools.put('/api/tools/kanban/items/<int:item_id>/efforts')
+@login_required
+def kanban_item_efforts(item_id):
+    payload=request.get_json(silent=True)
+    if not isinstance(payload,dict):return jsonify(error='Supply a JSON object.'),400
+    try:item=models.update_kanban_efforts(item_id,payload.get('effort_ids'),payload.get('revision'))
+    except models.ItemConflict as error:return jsonify(error=str(error)),409
+    except ValueError as error:return jsonify(error=str(error)),400
+    return jsonify(item=item) if item else (jsonify(error='Item not found.'),404)
+
+
+@campaign_tools.get('/api/tools/kanban/efforts/<int:effort_id>/items')
+@login_required
+def kanban_effort_items(effort_id):
+    items=models.kanban_effort_items(effort_id)
+    return jsonify(items=items) if items is not None else (jsonify(error='Effort not found.'),404)
