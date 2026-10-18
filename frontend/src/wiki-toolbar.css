@@ -1,0 +1,17 @@
+.wiki-format-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--rule); flex-shrink:0; z-index:6; }
+.wiki-format-toolbar button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:32px; height:34px; padding:6px; border:0; border-radius:4px; background:transparent; color:var(--ink); cursor:pointer; font:14px/1.3 system-ui; }
+.wiki-format-toolbar button:hover,.wiki-format-toolbar button[aria-expanded=true] { background:var(--panel-hi); color:var(--teal); }
+.wiki-format-toolbar button:disabled { opacity:.35; cursor:default; }
+.wiki-format-group { display:flex; gap:2px; border-right:1px solid var(--rule); padding-right:8px; }
+.wiki-format-toolbar .wiki-format-text { padding:6px 9px; }
+.wiki-format-toolbar button[aria-pressed=true] { background:var(--panel-hi); color:var(--teal); }
+.wiki-edit-pane > textarea[wrap=off] { white-space:pre; overflow-wrap:normal; word-break:normal; overflow-x:auto; }
+.wiki-edit-pane > textarea[wrap=soft] { white-space:pre-wrap; overflow-wrap:break-word; }
+.wiki-format-menu-anchor { position:relative; }
+.wiki-format-menu { position:absolute; top:calc(100% + 8px); left:0; width:200px; padding:6px; border:1px solid var(--rule); border-radius:6px; background:var(--panel); box-shadow:0 8px 24px #0006; z-index:20; max-height:340px; overflow:auto; }
+.wiki-format-menu button { width:100%; height:auto; min-height:36px; justify-content:flex-start; text-align:left; }
+.wiki-insert-menu { width:min(320px, 85vw); right:0; left:auto; }
+.wiki-insert-menu button { display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+.wiki-insert-menu small { color:var(--muted); font-size:11px; }
+.wiki-format-toolbar input[hidden] { display:none; }
+.wiki-insert-menu input { margin-bottom:6px; }

@@ -1,0 +1,10 @@
+.wiki-infobox{float:right;width:min(290px,42%);margin:0 0 18px 25px;border:1px solid var(--rule);background:var(--panel);padding:12px}
+.wiki-infobox-title{margin:0 0 8px;text-align:center;font:700 17px Georgia,serif}
+.wiki-infobox table{margin:0;font-size:14px}
+.wiki-infobox th{width:42%;background:var(--panel-hi)}
+.wiki-infobox p{margin:0}
+.wiki-link-sections{clear:both;display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:48px;padding-top:20px;border-top:1px solid var(--rule)}
+.wiki-link-list h2{font-size:19px;margin:0 0 7px}
+.wiki-link-list p{margin:0;color:var(--muted);font-size:14px}
+.wiki-link-list ul{margin:0;padding-left:20px}
+@media(max-width:800px){.wiki-infobox{float:none;width:auto;margin:0 0 18px}.wiki-link-sections{grid-template-columns:1fr;gap:18px}}

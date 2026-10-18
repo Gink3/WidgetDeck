@@ -1,0 +1,19 @@
+.git
+.env
+.env.*
+__pycache__
+*.pyc
+.venv
+frontend/node_modules
+static/mindmaps
+instance/wiki_attachments
+instance/wiki_backups/
+instance/wiki_restore_uploads/
+instance/wiki-worker.lock
+instance/wiki-schema.lock
+instance/wiki_uploads/
+instance/flashcard_uploads/
+.cache/translation/
+
+# Private runtime state is supplied by the persistent instance mount.
+instance/

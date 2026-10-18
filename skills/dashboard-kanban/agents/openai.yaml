@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dashboard Kanban"
+  short_description: "Read board tasks and validate local implementations"
+  default_prompt: "Use $dashboard-kanban to read the Dashboard board and summarize its tasks."

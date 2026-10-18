@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Kanban · WidgetDeck{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='campaign_tools.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='kanban.css') }}">{% endblock %}
+{% block body %}
+<main class="dashboard campaign-tool kanban-page">
+  <div class="tool-heading"><div><h1 class="sr-only">Kanban</h1></div><button class="primary" type="button" data-open-dialog="new-kanban">+ New board</button></div>
+  {% if boards %}<div class="kanban-toolbar"><label class="campaign-select">Board<select id="board-select">{% for board in boards %}<option value="{{ url_for('campaign_tools.kanban', board=board.id) }}" {% if selected and board.id == selected.id %}selected{% endif %}>{{ board.name }}</option>{% endfor %}</select></label><div class="kanban-column-tools"><details class="workspace-more"><summary>More</summary><div><button type="button" id="reorder-columns" aria-pressed="false">Reorder columns</button><button type="button" id="manage-columns">Manage columns</button></div></details><span id="column-order-hint" class="hint" hidden>Drag a column or use its left/right buttons. Changes save automatically.</span></div></div>{% endif %}
+  <p id="kanban-status" class="kanban-status" role="status" aria-live="polite"></p>
+  {% if selected %}
+  <div class="kanban-search"><label for="kanban-search">Search this board</label><input id="kanban-search" type="search" placeholder="Title or #item number" autocomplete="off"><button id="clear-kanban-search" type="button" disabled>Clear search</button><span id="kanban-search-count" role="status" aria-live="polite"></span></div>
+  <div class="kanban-workspace">
+    <section class="kanban-board" data-board="{{ selected.id }}" aria-label="{{ selected.name }} board">
+    {% for column in columns %}
+      <section class="kanban-column" data-column="{{ column.id }}" aria-labelledby="column-{{ column.id }}">
+        <div class="campaign-section-heading"><h2 id="column-{{ column.id }}">{{ column.name }}</h2><span class="column-count" aria-label="Item count">{{ items[column.id]|length }}</span><span class="column-order-controls" hidden><button type="button" data-column-step="-1" aria-label="Move {{ column.name }} column left">←</button><button type="button" data-column-step="1" aria-label="Move {{ column.name }} column right">→</button></span></div>
+        <div class="kanban-dropzone">
+          {% for item in items[column.id] %}
+          <article class="kanban-card{% if item.cancelled_at %} is-cancelled{% endif %}" draggable="true" data-item="{{ item.id }}" data-revision="{{ item.revision }}">
+            <button class="kanban-open" type="button" aria-controls="kanban-detail" aria-expanded="false"><span class="kanban-card-title">{{ item.title }}</span><span class="cancelled-badge" {% if not item.cancelled_at %}hidden{% endif %}>Cancelled</span><span class="kanban-card-notes" {% if not item.notes %}hidden{% endif %}>{{ item.notes }}</span></button>
+            <div class="kanban-card-meta"><span class="item-key">#{{ item.id }}</span><time datetime="{{ item.created_at }}" title="Date created">Created {{ item.created_at[:10] }}</time><div class="card-order"><button type="button" data-reorder="up" aria-label="Move item up" title="Move up">↑</button><button type="button" data-reorder="down" aria-label="Move item down" title="Move down">↓</button></div></div>
+          </article>
+          {% endfor %}
+        </div>
+        <details class="new-card"><summary>+ Add item</summary><form method="post" autocomplete="off" action="{{ url_for('campaign_tools.kanban_add_item', board_id=selected.id) }}"><input type="hidden" name="column_id" value="{{ column.id }}"><label class="sr-only" for="new-title-{{ column.id }}">Item title</label><input id="new-title-{{ column.id }}" name="title" autocomplete="off" maxlength="160" placeholder="What needs to be done?" required><label class="sr-only" for="new-notes-{{ column.id }}">Notes</label><textarea id="new-notes-{{ column.id }}" name="notes" rows="3" maxlength="5000" placeholder="Notes (optional)"></textarea><button class="primary">Add item</button></form></details>
+      </section>
+    {% endfor %}
+    </section>
+    <aside id="kanban-detail" class="kanban-detail" aria-labelledby="detail-heading" hidden>
+      <div class="detail-heading"><div><p class="eyebrow" id="detail-key">ITEM DETAILS</p><h2 id="detail-heading">Item details</h2></div><button type="button" id="close-detail" aria-label="Close item details">×</button></div>
+      <p id="detail-status" role="status" aria-live="polite"></p>
+      <form id="item-edit-form" autocomplete="off" hidden>
+        <label for="item-title">Title<input id="item-title" name="item_title" autocomplete="off" maxlength="160" required></label>
+        <label for="item-column">Status<select id="item-column">{% for column in columns %}<option value="{{ column.id }}">{{ column.name }}</option>{% endfor %}</select></label>
+        <label for="item-notes">Notes<textarea id="item-notes" maxlength="5000" rows="10" placeholder="Add context, ideas, or next steps…"></textarea></label>
+        <div class="detail-save-row"><span id="item-save-state">All changes saved</span><button class="primary" id="save-item">Save changes</button></div>
+        <dl class="item-metadata"><div><dt>Created</dt><dd id="item-created"></dd></div><div><dt>Updated</dt><dd id="item-updated"></dd></div></dl>
+      </form>
+      <div id="item-actions" hidden><button type="button" id="cancel-item">Cancel item</button><button type="button" id="delete-item">Delete item…</button><p class="hint">Cancellation keeps this item and its history. Deletion is permanent.</p></div>
+      <form id="item-transfer-form" hidden>
+        <h3>Move to another board</h3>
+        <label for="transfer-board">Destination board<select id="transfer-board" aria-label="Destination board" required><option value="">Choose a board…</option>{% for board in boards %}{% if board.id != selected.id %}<option value="{{ board.id }}">{{ board.name }}</option>{% endif %}{% endfor %}</select></label>
+        <label for="transfer-column">Destination status<select id="transfer-column" aria-label="Destination status" required disabled><option value="">Choose a board first</option></select></label>
+        <button type="submit" id="transfer-item" disabled>Move item</button>
+      </form>
+      <section id="item-links-section" hidden><h3>Links and dependencies</h3><ul id="item-links"></ul><h4>Linked from</h4><ul id="item-dependents"></ul><form id="item-link-form"><label for="link-target">Other item number<input id="link-target" type="number" min="1" required></label><label for="link-kind">Relationship</label><select id="link-kind"><option value="depends_on">Depends on</option><option value="related">Related issue</option></select><button type="submit">Add link</button></form><p class="hint">Use an item number from any of your boards. Dependencies cannot form cycles. Links do not change item status.</p></section>
+      <section id="item-comments-section" hidden><h3>Comments</h3><ol id="item-comments"></ol><form id="item-comment-form"><label for="comment-body">New comment<textarea id="comment-body" maxlength="5000" rows="3" required></textarea></label><button class="primary" id="add-comment">Add comment</button></form><p class="hint">Comments stay separate from notes. Edit or delete your comments using their own revision checks.</p></section>
+      <section id="item-history-section" hidden><h3>Update history</h3><ol id="item-history" class="item-history"></ol><p class="hint">Older items show recorded changes from this update onward.</p></section>
+    </aside>
+  </div>
+  {% else %}<section class="empty-campaign-state"><h2>Create your first board</h2><p>Use To do, In Progress, and Done — or any workflow that fits your project.</p><button class="primary" type="button" data-open-dialog="new-kanban">Create board</button></section>{% endif %}
+</main>
+{% if selected %}<dialog id="column-manager" class="campaign-dialog"><h2>Manage columns</h2><form id="add-column-form"><label>New column name<input id="column-name" maxlength="80" required></label><button class="primary">Add column</button></form><form id="remove-column-form"><label for="remove-column">Column to remove</label><select id="remove-column">{% for column in columns %}<option value="{{ column.id }}">{{ column.name }}</option>{% endfor %}</select><label for="column-destination">Move remaining cards to</label><select id="column-destination"><option value="">Only remove if empty</option>{% for column in columns %}<option value="{{ column.id }}">{{ column.name }}</option>{% endfor %}</select><p class="hint">Cards and their history are preserved. Keep at least one column.</p><button type="submit">Remove column</button></form><p id="column-manager-status" role="status"></p><button type="button" data-close-dialog>Close</button></dialog>{% endif %}
+<dialog id="new-kanban" class="campaign-dialog"><form method="post"><h2>New Kanban board</h2><label>Board name<input name="name" autocomplete="off" maxlength="80" placeholder="Campaign prep" required></label><p class="hint">Define the columns for this project.</p><div id="kanban-columns" class="field-builder"><div><input name="column_name" value="To do"></div><div><input name="column_name" value="In Progress"></div><div><input name="column_name" value="Done"></div></div><button type="button" class="text-button" data-add-kanban-column>+ Add column</button><div class="dialog-actions"><button class="primary">Create board</button><button type="button" data-close-dialog>Cancel</button></div></form></dialog>
+<script src="{{ url_for('static', filename='campaign_tools.js') }}" defer></script>
+<script src="{{ url_for('static', filename='kanban.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{
+  "name": "dashboard-mindmaps",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": { "build": "vite build" },
+  "dependencies": {
+    "katex": "^0.16.22",
+    "remark-math": "^6.0.0",
+    "rehype-katex": "^7.0.1",
+    "@xyflow/react": "^12.8.6",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.3",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.19"
+  }
+}

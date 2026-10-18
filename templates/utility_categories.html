@@ -1,0 +1,11 @@
+<section class="panel" id="utility-categories-panel" aria-labelledby="utility-categories-heading">
+<h2 id="utility-categories-heading">Utility categories</h2>
+<p><a href="{{ url_for('home') }}">Open WidgetDeck</a></p>
+<p>Create categories and choose where each utility appears on your WidgetDeck and in the Utilities menu. These choices are saved to your account.</p>
+<form id="utility-category-create" class="category-create"><label for="utility-category-name">New category<input id="utility-category-name" name="name" required maxlength="64" autocomplete="off"></label><button class="primary" type="submit">Add category</button></form>
+<p id="utility-category-status" role="status" aria-live="polite">Loading categories…</p>
+<div id="utility-category-list" class="category-list"></div>
+<p class="muted">Deleting a custom category returns its utilities to their widget defaults. Utility data is kept.</p>
+<div id="utility-category-assignments" class="category-assignments"></div>
+</section>
+<script src="{{ url_for('static',filename='utility-categories.js') }}" defer></script>

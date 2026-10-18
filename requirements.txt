@@ -1,0 +1,11 @@
+Flask>=3.0,<4.0
+gunicorn>=22.0,<24.0
+PyYAML>=6.0,<7.0
+Pillow>=11.3,<13.0
+CairoSVG>=2.7,<3.0
+pillow-heif>=0.22,<2.0
+beautifulsoup4>=4.12,<5.0
+readability-lxml>=0.8.4,<0.9
+markdownify>=1.2,<2.0
+
+packaging>=24,<27

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "mind-maps",
+  "provider": "dashboard",
+  "name": "Mind Maps",
+  "version": "1.0.0",
+  "core_api": ">=1.1,<2",
+  "entry_point": "dashboard.widgets.bundled:register_widget",
+  "dependencies": {},
+  "capabilities": [],
+  "default_category": "Knowledge"
+}

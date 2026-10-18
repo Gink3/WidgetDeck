@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "name": "public",
+  "sources": [],
+  "widgets": {
+    "wiki": {
+      "provider": "dashboard",
+      "version": ">=1,<2"
+    },
+    "mind-maps": {
+      "provider": "dashboard",
+      "version": ">=1,<2"
+    },
+    "kanban": {
+      "provider": "dashboard",
+      "version": ">=1,<2"
+    },
+    "wordle": {
+      "provider": "dashboard",
+      "version": ">=1,<2"
+    },
+    "image-converter": {
+      "provider": "dashboard",
+      "version": ">=1,<2"
+    }
+  }
+}

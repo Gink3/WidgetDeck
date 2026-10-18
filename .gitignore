@@ -1,0 +1,21 @@
+instance/*.sqlite
+instance/*.sqlite-*
+instance/wiki_attachments/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+*venv*
+frontend/node_modules/
+.env
+.env.*
+static/mindmaps/
+instance/wiki_backups/
+instance/wiki_restore_uploads/
+instance/wiki-worker.lock
+instance/wiki-schema.lock
+instance/wiki_uploads/
+instance/flashcard_uploads/
+.cache/translation/
+
+# Private runtime state is supplied by the persistent instance mount.
+instance/

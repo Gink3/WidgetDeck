@@ -1,0 +1,5 @@
+Guess dictionary: https://github.com/tabatkins/wordle-list
+Pinned commit: 255b9469c4dad99a3b95cc4ddbe139b3d3747868
+words SHA256: 9df5dad1b44cf1b9e0fa7c3ebff94d69ff7efb59f8691ac88e74e1c7b3da121e
+Retrieved 2026-10-15. MIT license included in WORD-LIST-LICENSE.
+Answers are a separately curated common-word subset; no original daily ordering is used.

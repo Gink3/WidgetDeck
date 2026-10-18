@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Image Converter · WidgetDeck{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='image_converter.css') }}">{% endblock %}
+{% block body %}
+<main class="dashboard converter-page">
+  <h1 class="sr-only">Image Converter</h1>
+  <section class="converter-panel">
+    <form method="post" enctype="multipart/form-data" class="converter-form">
+      <label class="converter-upload">Choose images
+        <input type="file" name="images" accept=".avif,.bmp,.png,.jpg,.jpeg,.svg,.tif,.tiff,.webp,image/avif,image/bmp,image/png,image/jpeg,image/svg+xml,image/tiff,image/webp" multiple required>
+      </label>
+      <label>Convert to
+        <select name="format" required>
+          {% for name, details in formats.items() %}<option value="{{ name }}">{{ name|upper }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="primary" type="submit">Convert &amp; download</button>
+    </form>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  </section>
+  <p class="converter-note">JPEG does not support transparency, so transparent pixels become white. SVG input is rasterized; image-to-SVG output embeds the image rather than tracing it into vectors. Select up to 30 images; each can be up to 30 MB, with a 100 MB batch total. Multiple converted images download as a ZIP.</p>
+</main>
+{% endblock %}

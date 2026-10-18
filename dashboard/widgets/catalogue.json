@@ -1,0 +1,89 @@
+{
+  "wordle": {
+    "navigation": {
+      "category": "Games",
+      "label": "Wordle",
+      "endpoint": "wordle.index",
+      "position": 0,
+      "icon": "▦",
+      "description": "Unlimited five-letter English puzzles with private statistics and hard mode.",
+      "action_label": "Play Wordle",
+      "action_url": "/tools/wordle"
+    },
+    "initializer": "dashboard.wordle:init_wordle",
+    "service": {
+      "ident": "wordle",
+      "label": "Wordle",
+      "prefix": "/api/tools/wordle/"
+    }
+  },
+  "wiki": {
+    "navigation": {
+      "category": "Knowledge",
+      "label": "Wiki",
+      "endpoint": "wiki.index",
+      "position": 1,
+      "icon": "▤",
+      "description": "Write linked Markdown pages, keep notes together, and add images where they help.",
+      "action_label": "New wiki page",
+      "action_url": "/tools/wiki/new"
+    },
+    "initializer": "dashboard.wiki:init_wiki",
+    "service": {
+      "ident": "wiki",
+      "label": "Wiki",
+      "prefix": "/tools/wiki/api/"
+    },
+    "search": "wiki"
+  },
+  "mind-maps": {
+    "navigation": {
+      "category": "Knowledge",
+      "label": "Mind Maps",
+      "endpoint": "mindmaps.index",
+      "position": 2,
+      "icon": "⌘",
+      "description": "Build private idea maps, plan projects, and connect the threads that matter.",
+      "action_label": "New mind map",
+      "action_url": "/tools/mindmaps/new"
+    },
+    "initializer": "dashboard.mindmaps:init_mindmaps",
+    "service": {
+      "ident": "mindmaps",
+      "label": "Mind maps",
+      "prefix": "/tools/mindmaps/api/"
+    },
+    "search": "maps"
+  },
+  "kanban": {
+    "navigation": {
+      "category": "Tools",
+      "label": "Kanban",
+      "endpoint": "campaign_tools.kanban",
+      "position": 0,
+      "icon": "▤",
+      "description": "Move cards through a workflow designed around each individual project.",
+      "action_label": "New board",
+      "action_url": "/tools/kanban?new=1"
+    },
+    "service": {
+      "ident": "kanban",
+      "label": "Kanban",
+      "prefix": "/api/tools/kanban/"
+    },
+    "search": "kanban"
+  },
+  "image-converter": {
+    "navigation": {
+      "category": "Tools",
+      "label": "Image Converter",
+      "endpoint": "image_converter.index",
+      "position": 1,
+      "icon": "▧",
+      "description": "Convert AVIF, PNG, JPEG, and WebP images right in your browser workflow.",
+      "action_label": "Convert an image",
+      "action_url": "/tools/image-converter"
+    },
+    "initializer": "dashboard.image_converter:init_image_converter"
+  }
+}

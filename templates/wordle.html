@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Wordle · WidgetDeck{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static',filename='wordle.css') }}">{% endblock %}
+{% block body %}
+<main class="dashboard wordle-page"><h1 class="sr-only">Wordle</h1>
+<div class="wordle-controls"><label><input type="checkbox" id="wordle-hard"> Hard mode for the next game</label><button class="primary" id="wordle-new" disabled>New game</button><details class="workspace-more"><summary>More</summary><div><button id="wordle-refresh">Reload game</button></div></details></div>
+<p class="hint">Hard mode keeps green letters in place and reuses yellow letters in a new position, including revealed duplicates. Restarting after a guess counts as a loss.</p>
+<p id="wordle-status" role="status" aria-live="polite">Loading your game…</p>
+<section id="wordle-grid" aria-label="Guesses"></section>
+<form id="wordle-guess-form"><label for="wordle-guess">Your guess</label><input id="wordle-guess" maxlength="5" minlength="5" pattern="[A-Za-z]{5}" autocomplete="off" autocapitalize="characters" spellcheck="false" required disabled><button class="primary" id="wordle-submit" disabled>Submit guess</button></form>
+<div id="wordle-keyboard" aria-label="Letter keyboard"></div>
+<p class="wordle-legend"><span class="correct">Correct position</span><span class="present">Present elsewhere</span><span class="absent">Not matched</span></p>
+<section class="panel"><h2>Your statistics</h2><dl id="wordle-stats"></dl><h3>Winning guess distribution</h3><ol id="wordle-distribution"></ol><p class="hint">Statistics and active games are saved privately to your account.</p></section>
+<p class="hint">Guess dictionary: <a href="https://github.com/tabatkins/wordle-list" target="_blank" rel="noopener noreferrer">Tab Atkins Jr., MIT license</a>. Answers use a common-word subset. Five-letter mode is available in this version.</p></main>
+<script src="{{ url_for('static',filename='wordle.js') }}" defer></script>
+{% endblock %}

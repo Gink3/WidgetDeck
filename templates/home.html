@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block body %}
+<main class="dashboard launcher-page"><h1 class="sr-only">WidgetDeck</h1>
+<form class="utility-filters" role="search" onsubmit="return false"><label for="utility-search">Find anything…<input type="search" id="utility-search" placeholder="Utilities, actions, reference numbers and saved work" autocomplete="off"></label></form>
+<div id="home-search-results" class="workspace-search-results" hidden></div>
+<div class="launcher-layout"><div class="launcher-main">
+
+<p id="launcher-status" role="status"></p><p id="widget-reorder-status" class="sr-only" aria-live="polite"></p><p id="utility-results" role="status" aria-live="polite"></p>
+<section class="cards">{% for group in utility_groups %}{% for link in group.links %}<article class="utility-tile" data-tile-id="{{ link.id }}" data-category="{{ group.name }}"><a class="card" data-widget-id="{{ link.id }}" data-category="{{ group.name }}" href="{{ link.url }}" {% if link.external %}target="_blank" rel="noopener noreferrer"{% endif %}><span class="card-icon" aria-hidden="true">{{ link.icon }}</span><div><h2>{{ link.label }}</h2><p>{{ link.description }}</p></div></a><button type="button" class="utility-pin" data-pin="{{ link.id }}" aria-label="Pin {{ link.label }}" aria-pressed="false">☆</button></article>{% endfor %}{% endfor %}</section>
+<section class="activity-panel launcher-section" aria-labelledby="home-activity-heading"><h2 id="home-activity-heading">Recent activity</h2><div id="home-recent-activity" class="activity-list" aria-live="polite"><p class="hint">Loading activity…</p></div></section>
+</div>
+<aside aria-label="Workspace shortcuts" class="launcher-section launcher-recent-panel">
+<label class="launcher-category-filter" for="utility-category">Utilities<select id="utility-category" aria-describedby="catalogue-filter-scope"><option value="">All categories</option>{% for group in utility_groups %}<option>{{ group.name }}</option>{% endfor %}</select></label><p id="catalogue-filter-scope" class="sr-only">Filters utility tiles only. Search, favourites and recent work include all categories.</p>
+<p><a class="launcher-category-manage" href="{{ url_for('settings') }}#utility-categories-panel">Manage categories</a></p>
+<section aria-labelledby="favourites-heading" class="launcher-section"><h2 id="favourites-heading">Favourites</h2><div id="launcher-favourites" class="launcher-shortcuts"></div></section>
+<section aria-labelledby="continue-heading" class="launcher-section"><h2 id="continue-heading">Continue working</h2><div id="launcher-recent" class="launcher-shortcuts"><p class="hint">Your recently opened items appear here.</p></div></section></aside>
+</div>
+</main>{% endblock %}
+{% block head %}<script type="application/json" id="utility-categories">{{ utility_groups|tojson }}</script><script src="{{ url_for('static',filename='home.js') }}" defer></script>{% endblock %}
