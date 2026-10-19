@@ -116,7 +116,7 @@ def _archive(repo, revision, subdirectory='.'):
     for row in _git(repo, 'ls-tree', '-r', '-z', tree).split(b'\0'):
         if row and row.split(b' ', 1)[0] not in (b'100644', b'100755'):
             raise WidgetError('Source archives cannot contain links or submodules.')
-    return _git(repo, 'archive', '--format=tar', tree)
+    return _git(repo, 'archive', '--format=tar', '--mtime=1970-01-01T00:00:00Z', tree)
 
 
 def _extract(data, destination):

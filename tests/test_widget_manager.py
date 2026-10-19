@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import shutil
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 
@@ -189,3 +190,11 @@ class WidgetManagerTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(main(['lock', '--profile', str(self.profile), '--output', str(self.lockfile), '--cache', str(self.cache)]), 0)
             self.assertEqual(main(['sync', '--lock', str(self.lockfile), '--destination', str(self.root / 'sources'), '--cache', str(self.cache)]), 0)
+
+    def test_archive_hashes_do_not_depend_on_tree_archive_wall_clock(self):
+        revision = self.git(self.widget, 'rev-parse', 'HEAD')
+        data = manager._archive(self.widget, revision, 'package')
+        with tarfile.open(fileobj=io.BytesIO(data)) as archive:
+            self.assertTrue(archive.getmembers())
+            self.assertEqual({member.mtime for member in archive.getmembers()}, {0})
+        self.assertEqual(data, manager._archive(self.widget, revision, 'package'))

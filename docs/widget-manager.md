@@ -1,7 +1,7 @@
 # Explicit source management
 
 The runtime never downloads or installs packages. Run management commands from a
-trusted checkout with Python 3.12+, Git, venv and the core requirements installed.
+trusted checkout with Python 3.12+, Git supporting archive `--mtime`, venv and the core requirements installed.
 Package builds execute trusted package build code; review sources before building.
 The manager must have the same widget API version as the selected core.
 
