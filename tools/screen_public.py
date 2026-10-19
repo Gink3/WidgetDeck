@@ -31,10 +31,10 @@ def reasons(path, data, fingerprints):
     if data is None:
         return ['unsupported Git entry']
     issues = []
-    if any(p in {'.agents', '.aws', '.codex', '.sources', '.build', '.venv', 'node_modules',
+    if any(p in {'.agents', '.aws', '.codex', '.sources', '.widget-sources', '.build', '.venv', 'node_modules',
                  '__pycache__', 'instance', 'content-packs', 'private-artifacts'}
            or p == '.env' or p.startswith('.env.') or p == 'widget-migration-backups'
-           or p.endswith('.widget-migration-pending') for p in parts):
+           or p.endswith(('.widget-migration-pending', '.generations')) for p in parts):
         issues.append('private or generated path')
     if path.startswith('static/mindmaps/') or path.endswith(('.pyc', '.sqlite', '.sqlite-wal', '.eml')):
         issues.append('runtime or generated artifact')

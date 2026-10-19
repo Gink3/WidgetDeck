@@ -21,7 +21,7 @@ class PublicScreenTests(unittest.TestCase):
     def test_private_generated_and_secret_inputs_fail(self):
         for path in ('.env.production', '.aws/config', 'instance/data.sqlite',
                      'content-packs/example/data.json', 'frontend/node_modules/a.js', 'static/mindmaps/bundle.js',
-                     'custom.sqlite.widget-migration-pending/journal.json', 'widget-migration-backups/saved.bin'):
+                     'custom.sqlite.widget-migration-pending/journal.json', 'widget-migration-backups/saved.bin', '.widget-sources/object', 'candidate.generations/private.whl'):
             self.assertTrue(screen.reasons(path, b'synthetic', set()), path)
         secret = b'-----BEGIN ' + b'PRIVATE KEY-----'
         self.assertTrue(screen.reasons('unexpected.txt', secret, set()))
@@ -48,3 +48,28 @@ class PublicScreenTests(unittest.TestCase):
             subprocess.run(['git', '-C', folder, 'add', 'fixture.txt'], check=True)
             path.write_bytes(b'later edit')
             self.assertEqual(list(screen.blobs(folder, staged=True)), [('fixture.txt', b'staged fixture')])
+
+    @unittest.skipUnless(shutil.which('git'), 'Hook fixture requires Git')
+    def test_hook_uses_private_local_configuration_and_fails_closed(self):
+        import json
+        import os
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            subprocess.run(['git', 'init', '-q', folder], check=True)
+            (root / 'tools').mkdir()
+            shutil.copy2(Path(screen.__file__), root / 'tools/screen_public.py')
+            hook = Path(screen.__file__).parents[1] / '.githooks/pre-commit'
+            payload = b'independently authored restricted hook fixture'
+            (root / 'fixture.txt').write_bytes(payload)
+            subprocess.run(['git', '-C', folder, 'add', 'fixture.txt'], check=True)
+            hashes = root / '.git/private-hashes.json'
+            hashes.write_text(json.dumps([hashlib.sha256(payload).hexdigest()]))
+            subprocess.run(['git', '-C', folder, 'config', '--local', 'widgetdeck.screenFingerprints', str(hashes)], check=True)
+            env = {k: v for k, v in os.environ.items() if k != 'WIDGETDECK_RESTRICTED_SHA256'}
+            run = lambda: subprocess.run(['sh', str(hook)], cwd=folder, env=env, capture_output=True)
+            self.assertEqual(run().returncode, 1)
+            (root / 'fixture.txt').write_bytes(b'lawful replacement fixture')
+            subprocess.run(['git', '-C', folder, 'add', 'fixture.txt'], check=True)
+            self.assertEqual(run().returncode, 0)
+            hashes.unlink()
+            self.assertEqual(run().returncode, 2)

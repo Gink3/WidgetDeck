@@ -31,3 +31,30 @@ are not credentials. Exact hashes do not detect transformed/embedded content.
 Review new assets and text manually, including provenance and licensing. A
 passing tree check does not clear old Git objects, hosted refs, releases, caches
 or registry images. Audit those independently before publication.
+
+## Activate screening in each clone
+
+Export the private reference hashes outside this repository. Configure the local
+clone using its absolute fingerprint file path, then enable the versioned hook:
+
+```sh
+git config --local widgetdeck.screenFingerprints /private/location/hashes.json
+git config --local core.hooksPath .githooks
+```
+
+The local Git configuration keeps that private path out of Git. The hook screens
+the index and fails closed if required hashes are unavailable. The environment
+variable remains supported when no local file is configured. Hooks are a local
+guard and can be bypassed; hosted branch enforcement is independently required.
+
+The Public screening workflow requires the repository Actions secret
+`WIDGETDECK_RESTRICTED_SHA256` (the exported JSON array). Configure branch
+protection/rulesets to require its `public-screen` status, a pull request, and
+review before merging; prohibit force pushes/deletion and review administrator
+bypass policy. Reconcile existing protections rather than replacing them blindly.
+Run a trusted branch workflow after configuring the secret and verify both a
+passing synthetic tree and rejection fixture before treating enforcement as live.
+Fork pull requests without the secret deliberately fail closed; do not expose
+private reference inputs through pull_request_target or an untrusted checkout.
+Store only the hashes in the hosted secret, never the reference corpus. Workflow
+files in a local commit do not prove hosted enforcement is configured.

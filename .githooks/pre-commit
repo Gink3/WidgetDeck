@@ -1,3 +1,7 @@
 #!/bin/sh
 set -eu
+fingerprints=$(git config --local --get widgetdeck.screenFingerprints || true)
+if [ -n "$fingerprints" ]; then
+  exec python3 tools/screen_public.py --staged --require-fingerprints --fingerprints "$fingerprints"
+fi
 exec python3 tools/screen_public.py --staged --require-fingerprints
