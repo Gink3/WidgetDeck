@@ -27,8 +27,31 @@ def main(argv=None):
     recovery = subcommands.add_parser('recover-migration', help='Recover an interrupted managed-file migration offline')
     recovery.add_argument('--database', required=True)
     recovery.add_argument('--offline', action='store_true')
+    locking = subcommands.add_parser('lock', help='Resolve a management profile into an exact source lock')
+    locking.add_argument('--profile', required=True)
+    locking.add_argument('--output', required=True)
+    locking.add_argument('--cache', default='.widget-sources')
+    syncing = subcommands.add_parser('sync', help='Acquire and verify exactly locked source archives')
+    syncing.add_argument('--lock', required=True)
+    syncing.add_argument('--destination', required=True)
+    syncing.add_argument('--cache', default='.widget-sources')
+    building = subcommands.add_parser('build', help='Build an isolated, hash-locked candidate without deploying')
+    building.add_argument('--lock', required=True)
+    building.add_argument('--sources', required=True)
+    building.add_argument('--destination', required=True)
+    building.add_argument('--editable', action='store_true')
     args = parser.parse_args(argv)
     try:
+        if args.command in {'lock', 'sync', 'build'}:
+            from . import manager
+            if args.command == 'lock':
+                result = manager.lock(args.profile, args.output, args.cache)
+            elif args.command == 'sync':
+                result = manager.sync(args.lock, args.destination, args.cache)
+            else:
+                result = manager.build(args.lock, args.sources, args.destination, editable=args.editable)
+            print(json.dumps(result, indent=2))
+            return 0
         if args.command == 'recover-migration':
             from .migration_files import recover
             print(json.dumps(recover(args.database, offline=args.offline), indent=2))
@@ -56,6 +79,9 @@ def main(argv=None):
         return 0
     except WidgetError as error:
         print(str(error), file=sys.stderr)
+        return 1
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print('Invalid management input or unavailable storage: ' + type(error).__name__, file=sys.stderr)
         return 1
 
 

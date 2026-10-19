@@ -21,3 +21,5 @@ instance/flashcard_uploads/
 instance/
 *.widget-migration-pending/
 widget-migration-backups/
+.widget-sources/
+*.generations/

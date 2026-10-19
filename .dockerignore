@@ -27,3 +27,4 @@
 static/mindmaps/
 **/*.widget-migration-pending
 **/widget-migration-backups
+**/*.generations
