@@ -72,6 +72,7 @@ class KanbanBrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator(f"[data-item='{self.item['id']}']").count(), 0)
         self.page.goto(self.base+f"/tools/kanban?board={self.boards[1]['id']}")
         self.page.get_by_role('button', name='Transfer me').click()
+        self.page.locator('#item-history-section > summary').click()
         self.page.locator('#item-history strong').filter(has_text='Board changed').first.wait_for()
         self.page.locator('#item-history summary').filter(has_text='Board changed').click()
         self.assertIn('Source', self.page.locator('#item-history').inner_text())
@@ -195,6 +196,16 @@ class KanbanBrowserTests(unittest.TestCase):
 
     def test_comments_are_plain_text_and_preserve_unsaved_notes(self):
         self.page.locator('#item-notes').fill('Draft notes preserved')
+        comments = self.page.locator('#item-comments-section')
+        self.assertFalse(comments.evaluate('(el) => el.open'))
+        self.page.set_viewport_size({'width':375,'height':900})
+        mobile = self.page.evaluate('''() => ({page: document.documentElement.scrollWidth, viewport: innerWidth,
+          width: document.querySelector('.kanban-detail').getBoundingClientRect().width})''')
+        self.assertLessEqual(mobile['page'], mobile['viewport']+1)
+        self.assertLessEqual(mobile['width'], mobile['viewport'])
+        comments.locator('summary').focus()
+        self.page.keyboard.press('Enter')
+        self.assertTrue(comments.evaluate('(el) => el.open'))
         marker='<img src=x onerror="window.__commentAudit=1">'
         self.page.get_by_label('New comment',exact=True).fill(marker)
         self.page.get_by_role('button',name='Add comment',exact=True).click()
@@ -205,14 +216,17 @@ class KanbanBrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator('#item-comments p').inner_text(),marker)
         self.page.get_by_role('button',name='Save changes',exact=True).click()
         self.page.wait_for_function("document.querySelector('#save-item').disabled")
+        self.page.get_by_role('button',name='Close item details',exact=True).click()
         self.page.reload()
         self.page.locator(f"[data-item='{self.item['id']}'] .kanban-open").click()
+        self.page.locator('#item-comments-section > summary').click()
         self.page.locator('#item-comments p').wait_for()
         self.assertEqual(self.page.locator('#item-comments p').inner_text(),marker)
 
     def test_issue_links_open_the_target_and_cycles_are_rejected(self):
         dest=self.boards[1]
         target=self.http.post(self.base+f"/api/tools/kanban/boards/{dest['id']}/items",data={'title':'Prerequisite','column_id':dest['columns'][0]['id']}).json()['item']
+        self.page.locator('#item-links-section > summary').click()
         self.page.get_by_label('Other item number',exact=True).fill(str(target['id']))
         self.page.get_by_role('button',name='Add link',exact=True).click()
         self.page.get_by_text('Links saved.',exact=True).wait_for()
@@ -220,11 +234,13 @@ class KanbanBrowserTests(unittest.TestCase):
         link.click()
         self.page.wait_for_function("!document.querySelector('#item-edit-form').hidden")
         self.assertEqual(self.page.locator('#item-title').input_value(),'Prerequisite')
+        self.page.locator('#item-links-section > summary').click()
         self.page.get_by_label('Other item number',exact=True).fill(str(self.item['id']))
         self.page.get_by_role('button',name='Add link',exact=True).click()
         self.page.get_by_text('Dependencies cannot form a cycle.',exact=True).wait_for()
 
     def test_column_manager_respects_unsaved_comment_drafts(self):
+        self.page.locator('#item-comments-section > summary').click()
         self.page.get_by_label('New comment',exact=True).fill('Unsaved comment')
         self.page.once('dialog',lambda dialog:dialog.dismiss())
         self.page.locator('.kanban-column-tools .workspace-more summary').click()
@@ -246,6 +262,7 @@ class KanbanBrowserTests(unittest.TestCase):
         with self.page.expect_navigation():
             self.page.get_by_role('button', name='Create effort', exact=True).click()
         self.page.get_by_role('button', name='Transfer me').click()
+        self.page.locator('#item-metadata-section > summary').click()
         self.page.get_by_label('MCP and wiki RAG', exact=True).check()
         self.page.get_by_text('Efforts saved.', exact=True).wait_for()
         self.assertEqual(self.page.locator('.effort-badge').inner_text(), 'MCP and wiki RAG')
@@ -269,6 +286,7 @@ class KanbanBrowserTests(unittest.TestCase):
         self.http.put(self.base+f'/api/tools/kanban/items/{self.item["id"]}/efforts',data={'effort_ids':[effort['id']],'revision':0})
         self.page.reload()
         self.page.get_by_role('button',name='Transfer me').click()
+        self.page.locator('#item-metadata-section > summary').click()
         self.page.locator('#item-notes').fill('Keep this draft')
         self.page.get_by_label('Old effort',exact=True).click()
         self.page.get_by_text('Save your item edits before changing efforts.',exact=True).wait_for()
