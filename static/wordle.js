@@ -18,13 +18,19 @@
     input.disabled = !active || busy; $('#wordle-submit').disabled = !active || busy;
     $('#wordle-new').disabled = busy || !csrf; $('#wordle-refresh').disabled = busy;
     $('#wordle-hard').disabled = busy;
-    lengthSelect.disabled = busy || active;
+    // These settings apply to the next game, so keep them editable during a game.
+    lengthSelect.disabled = busy;
     $('#wordle-keyboard').querySelectorAll('button').forEach(button => { button.disabled = !active || busy; });
   }
   function render(data) {
     game = data.game; if (data.csrf_token) csrf = data.csrf_token;
-    $('#wordle-hard').checked = Boolean(game?.hard_mode);
-    if (game) lengthSelect.value = String(game.word_length || 5);
+    // Initialize the next-game settings from a saved game when it is loaded. Keep
+    // later user changes while guesses update the current game.
+    if (game && !render.settingsInitialized) {
+      $('#wordle-hard').checked = Boolean(game.hard_mode);
+      lengthSelect.value = String(game.word_length || 5);
+      render.settingsInitialized = true;
+    }
     const wordLength = game?.word_length || Number(lengthSelect.value);
     input.maxLength = wordLength; input.minLength = wordLength; input.pattern = `[A-Za-z]{${wordLength}}`;
     const grid = $('#wordle-grid'); grid.replaceChildren();

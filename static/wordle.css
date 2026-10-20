@@ -28,6 +28,7 @@
 .wordle-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 24px 0 14px; }
 .wordle-controls label { margin: 0; }
 .wordle-controls input { width: auto; }
+#wordle-settings > div { left: 0; right: auto; max-width: calc(100vw - 32px); }
 #wordle-grid { display: grid; gap: 7px; width: max-content; max-width: 100%; margin: 24px auto; }
 .wordle-row { display: grid; grid-template-columns: repeat(var(--word-length,5), minmax(0,54px)); gap: 7px; }
 .wordle-tile { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 2px solid var(--rule); font-size: 28px; font-weight: bold; }
