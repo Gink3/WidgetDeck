@@ -2,6 +2,7 @@
   'use strict';
   const $ = selector => document.querySelector(selector);
   const input = $('#wordle-guess');
+  const lengthSelect = $('#wordle-length');
   let game = null, csrf = '', busy = false;
   const status = message => { $('#wordle-status').textContent = message; };
   async function api(path, body) {
@@ -17,17 +18,27 @@
     input.disabled = !active || busy; $('#wordle-submit').disabled = !active || busy;
     $('#wordle-new').disabled = busy || !csrf; $('#wordle-refresh').disabled = busy;
     $('#wordle-hard').disabled = busy;
+    // These settings apply to the next game, so keep them editable during a game.
+    lengthSelect.disabled = busy;
     $('#wordle-keyboard').querySelectorAll('button').forEach(button => { button.disabled = !active || busy; });
   }
   function render(data) {
     game = data.game; if (data.csrf_token) csrf = data.csrf_token;
-    $('#wordle-hard').checked = Boolean(game?.hard_mode);
+    // Initialize the next-game settings from a saved game when it is loaded. Keep
+    // later user changes while guesses update the current game.
+    if (game && !render.settingsInitialized) {
+      $('#wordle-hard').checked = Boolean(game.hard_mode);
+      lengthSelect.value = String(game.word_length || 5);
+      render.settingsInitialized = true;
+    }
+    const wordLength = game?.word_length || Number(lengthSelect.value);
+    input.maxLength = wordLength; input.minLength = wordLength; input.pattern = `[A-Za-z]{${wordLength}}`;
     const grid = $('#wordle-grid'); grid.replaceChildren();
     const priority = {absent:1,present:2,correct:3}, keys = {};
     for (let row = 0; row < 6; row++) {
       const line = document.createElement('div'); line.className = 'wordle-row';
       const entry = game?.guesses[row];
-      for (let column = 0; column < 5; column++) {
+      for (let column = 0; column < wordLength; column++) {
         const tile = document.createElement('span'); const letter = entry?.word[column], mark = entry?.marks[column];
         tile.className = 'wordle-tile' + (mark ? ' '+mark : ''); tile.textContent = letter?.toUpperCase() || '';
         tile.setAttribute('aria-label',letter ? `${letter.toUpperCase()}: ${mark}` : 'Empty'); line.append(tile);
@@ -43,6 +54,7 @@
     }
     const distribution = $('#wordle-distribution'); distribution.replaceChildren();
     Object.entries(data.stats.distribution).forEach(([attempt,count]) => { const li = document.createElement('li');li.textContent = `${attempt} ${attempt === '1' ? 'guess' : 'guesses'}: ${count}`;distribution.append(li); });
+    grid.style.setProperty('--word-length', wordLength);
     status(!game ? 'Start a new game.' : game.status === 'won' ? `You won in ${game.guesses.length}! The word was ${game.answer.toUpperCase()}.`
       : game.status === 'lost' ? `The word was ${game.answer.toUpperCase()}. Try another game.` : `${game.guesses.length} of 6 guesses used${game.hard_mode ? ' · Hard mode' : ''}.`);
     controls();
@@ -51,7 +63,7 @@
     const row = document.createElement('div'); row.className = 'wordle-key-row';
     for (const letter of letters) {
       const button = document.createElement('button');button.type = 'button';button.dataset.letter = letter;button.textContent = letter.toUpperCase();
-      button.addEventListener('click',() => { if (input.value.length < 5) input.value += letter.toUpperCase(); input.focus(); });row.append(button);
+      button.addEventListener('click',() => { if (input.value.length < Number(input.maxLength)) input.value += letter.toUpperCase(); input.focus(); });row.append(button);
     }
     $('#wordle-keyboard').append(row);
   }
@@ -72,7 +84,7 @@
     const reset = game?.status === 'active';
     if (reset && game.guesses.length && !window.confirm('Starting another game counts this game as a loss. Continue?')) return;
     busy = true;controls();
-    try { render(await api('games',{hard_mode:$('#wordle-hard').checked,reset,revision:game?.revision})); input.value = ''; }
+    try { render(await api('games',{hard_mode:$('#wordle-hard').checked,word_length:Number(lengthSelect.value),reset,revision:game?.revision})); input.value = ''; }
     catch(error) { status(error.message); }
     finally { busy = false;controls();if (!input.disabled) input.focus(); }
   });

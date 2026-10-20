@@ -123,16 +123,21 @@
     window.recordLauncherVisit?.('kanban',item.id,'item');
     selected = item; dirty = false;
     title.value = item.title; notes.value = item.notes; column.value = item.column_id;
+    $('#detail-heading').textContent = item.title;
     $('#detail-key').textContent = `ITEM #${item.id}`;
     $('#item-created').textContent = date(item.created_at); $('#item-updated').textContent = date(item.updated_at || item.created_at);
     $('#item-save-state').textContent = 'All changes saved'; $('#save-item').disabled = true;
-    form.hidden = false; $('#item-history-section').hidden = false;
+    form.hidden = false; $('#item-history-section').hidden = false; $('#item-metadata-section').hidden = false;
+    const historyCount = item.history.length || 1;
+    $('#item-history-section').querySelector('summary').textContent = `Update history (${historyCount})`;
     transferForm.hidden = false;
     $('#item-actions').hidden = false; $('#cancel-item').textContent = item.cancelled_at ? 'Restore item' : 'Cancel item';
     renderHistory(item); renderComments(item); renderLinks(item); renderEfforts(item);
   }
   function renderLinks(item) {
     $('#item-links-section').hidden = false;
+    const linkCount = (item.links || []).length + (item.dependents || []).length;
+    $('#item-links-section').querySelector('summary').textContent = `Links and dependencies${linkCount ? ` (${linkCount})` : ''}`;
     [['#item-links',item.links || [],false],['#item-dependents',item.dependents || [],true]].forEach(([selector,links,reverse]) => {
       const list = $(selector); list.replaceChildren();
       links.forEach(link => {
@@ -164,8 +169,10 @@
   });
   function renderComments(item) {
     $('#item-comments-section').hidden = false;
+    const comments = item.comments || [];
+    $('#item-comments-section').querySelector('summary').textContent = `Comments${comments.length ? ` (${comments.length})` : ''}`;
     const list = $('#item-comments'); list.replaceChildren();
-    (item.comments || []).forEach(comment => {
+    comments.forEach(comment => {
       const li = document.createElement('li'), heading = document.createElement('strong'), body = document.createElement('p');
       heading.textContent = `${comment.author || 'Account'} · ${date(comment.created_at)}${comment.revision ? ' · edited' : ''}`;
       body.textContent = comment.body; li.append(heading, body);
@@ -214,7 +221,8 @@
     dirty = false; selected = null; $('#comment-body').value = '';
     const request = ++requestNumber;
     detail.hidden = false; $('.kanban-workspace').classList.add('detail-open');
-    form.hidden = true; $('#item-history-section').hidden = true; selectCard(id);
+    form.hidden = true; $('#item-history-section').hidden = true; $('#item-metadata-section').hidden = true; selectCard(id);
+    detail.querySelectorAll('.item-disclosure').forEach(disclosure => { disclosure.open = false; });
     transferForm.hidden = true;
     $('#item-actions').hidden = true; $('#item-efforts-section').hidden = true;
     $('#item-comments-section').hidden = true; $('#item-links-section').hidden = true;
@@ -271,6 +279,7 @@
   });
   form.addEventListener('input', () => {
     if (!selected) return;
+    $('#detail-heading').textContent = title.value || 'Untitled item';
     dirty = title.value !== selected.title || notes.value !== selected.notes || Number(column.value) !== selected.column_id;
     $('#item-save-state').textContent = dirty ? 'Unsaved changes' : 'All changes saved'; $('#save-item').disabled = !dirty;
   });
