@@ -64,7 +64,14 @@
 .item-metadata { display: grid; gap: 10px; padding-top: 18px; border-top: 1px solid var(--rule); margin: 0; font-size: 12px; }
 .item-metadata > div { display: grid; grid-template-columns: 65px 1fr; gap: 10px; }
 .item-metadata dt { color: var(--muted); }.item-metadata dd { margin: 0; }
-#item-history-section { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--rule); }
+.item-disclosure { margin-top: 16px; border-top: 1px solid var(--rule); }
+.item-disclosure > summary { display: flex; align-items: center; min-height: 44px; padding: 4px 2px; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; }
+.item-disclosure > summary:hover { color: var(--teal); }
+.item-disclosure-content { padding: 4px 0 8px; min-width: 0; }
+#item-metadata-section .item-metadata { border: 0; padding: 2px 0 14px; }
+#item-efforts-section { margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--rule); }
+#item-efforts-section legend { padding: 0; font-size: 13px; font-weight: 600; }
+#item-history-section { padding-top: 0; }
 #item-history-section h3 { font-size: 15px; margin: 0 0 16px; }
 .item-history { list-style: none; padding: 0; margin: 0; }
 .item-history li { border-left: 2px solid var(--rule); margin: 0 0 16px 3px; padding: 0 0 0 13px; font-size: 12px; }
@@ -72,7 +79,7 @@
 .item-history summary { font-size: 12px; font-weight: normal; }
 .history-values { background: #191521; padding: 10px; margin-top: 8px; }
 .history-values p { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; margin: 4px 0 12px; }
-#item-history-section > .hint { font-size: 11px; }
+#item-history-section .hint { font-size: 11px; }
 @media (max-width: 1050px) { .kanban-page { padding: 0 20px; } .kanban-toolbar { align-items: start; flex-direction: column; gap: 12px; } }
 @media (max-width: 760px) { .kanban-page { padding: 0 16px; margin-top: 24px; } .kanban-workspace.detail-open { grid-template-columns: minmax(0,1fr); } .kanban-board { margin: 0; } .kanban-column { flex: 0 0 min(290px,80vw); min-width: 0; } .kanban-detail { position: fixed; z-index: 30; inset: 0 0 0 auto; width: min(440px,100%); max-height: 100dvh; border-radius: 0; box-shadow: -15px 0 40px #0008; padding: 20px; } }
 
