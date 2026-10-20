@@ -1,5 +1,7 @@
 import hashlib
 import json
+import sqlite3
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -34,6 +36,43 @@ class WordleTests(unittest.TestCase):
         response=self.guess(game,'apple');self.assertEqual(response.json['game']['status'],'won')
         self.assertEqual(response.json['stats']['wins'],1);self.assertEqual(response.json['stats']['distribution']['2'],1)
         self.assertEqual(self.guess(game,'apple').status_code,409)
+
+    def test_six_and_seven_letter_games_validate_and_score_full_words(self):
+        for length,answer in ((6,'almost'),(7,'balance')):
+            with self.subTest(length=length), patch('dashboard.wordle.secrets.choice',return_value=answer):
+                started=self.client.post('/api/tools/wordle/games',json={'word_length':length},headers=self.headers)
+                self.assertEqual(started.status_code,201);game=started.json['game']
+                self.assertEqual(game['word_length'],length)
+                self.assertEqual(game['guesses'],[])
+                bad=self.guess(game,'apple')
+                self.assertEqual(bad.status_code,400)
+                won=self.guess(game,answer)
+                self.assertEqual(won.status_code,200)
+                self.assertEqual(won.json['game']['status'],'won')
+                self.assertEqual(len(won.json['game']['guesses'][0]['marks']),length)
+                self.assertEqual(won.json['game']['answer'],answer)
+
+    def test_length_defaults_to_five_and_rejects_unsupported_values(self):
+        game=self.start().json['game'];self.assertEqual(game['word_length'],5)
+        for invalid in (4,8,True,'6'):
+            response=self.client.post('/api/tools/wordle/games',json={'word_length':invalid},headers=self.headers)
+            self.assertEqual(response.status_code,400)
+
+    def test_existing_database_games_migrate_as_five_letter_games(self):
+        directory=tempfile.TemporaryDirectory();self.addCleanup(directory.cleanup)
+        legacy=directory.name+'/dashboard.sqlite'
+        with sqlite3.connect(legacy) as connection:
+            connection.execute('''CREATE TABLE wordle_games (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,user_id INTEGER NOT NULL,
+                answer TEXT NOT NULL,guesses TEXT NOT NULL DEFAULT '[]',hard_mode INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'active',revision INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,updated_at TEXT NOT NULL)''')
+            connection.execute("INSERT INTO wordle_games(id,user_id,answer,created_at,updated_at) VALUES('legacy-game',1,'apple','now','now')")
+        name,app=isolated_application(directory.name);self.addCleanup(lambda:sys.modules.pop(name,None))
+        with app.app_context():
+            columns={row[1] for row in db().execute('PRAGMA table_info(wordle_games)')}
+            saved=db().execute("SELECT word_length FROM wordle_games WHERE id='legacy-game'").fetchone()
+        self.assertIn('word_length',columns);self.assertEqual(saved['word_length'],5)
 
     def test_persistence_restart_stats_losses_and_account_isolation(self):
         game=self.start().json['game']
