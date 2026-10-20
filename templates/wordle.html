@@ -3,7 +3,7 @@
 {% block head %}<link rel="stylesheet" href="{{ url_for('static',filename='wordle.css') }}">{% endblock %}
 {% block body %}
 <main class="dashboard wordle-page"><h1 class="sr-only">Wordle</h1>
-<div class="wordle-controls"><label for="wordle-length">Word length for the next game</label><select id="wordle-length"><option value="5">5 letters</option><option value="6">6 letters</option><option value="7">7 letters</option></select><label><input type="checkbox" id="wordle-hard"> Hard mode for the next game</label><button class="primary" id="wordle-new" disabled>New game</button><details class="workspace-more"><summary>More</summary><div><button id="wordle-refresh">Reload game</button></div></details></div>
+<div class="wordle-controls"><details class="workspace-more" id="wordle-settings"><summary>Settings</summary><div class="wordle-settings-fields"><label for="wordle-length">Word length for the next game</label><select id="wordle-length"><option value="5">5 letters</option><option value="6">6 letters</option><option value="7">7 letters</option></select><label for="wordle-hard"><input type="checkbox" id="wordle-hard"> Hard Mode</label></div></details><button class="primary" id="wordle-new" disabled>New game</button><details class="workspace-more"><summary>More</summary><div><button id="wordle-refresh">Reload game</button></div></details></div>
 <p class="hint">Hard mode keeps green letters in place and reuses yellow letters in a new position, including revealed duplicates. Restarting after a guess counts as a loss.</p>
 <p id="wordle-status" role="status" aria-live="polite">Loading your game…</p>
 <section id="wordle-grid" aria-label="Guesses"></section>
