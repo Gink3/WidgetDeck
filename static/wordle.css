@@ -4,8 +4,8 @@
 .wordle-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 24px 0 14px; }
 .wordle-controls label { margin: 0; }
 .wordle-controls input { width: auto; }
-#wordle-grid { display: grid; gap: 7px; max-width: 340px; margin: 24px auto; }
-.wordle-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; }
+#wordle-grid { display: grid; gap: 7px; max-width: min(100%, calc(40px * var(--word-length,5) + 140px)); margin: 24px auto; }
+.wordle-row { display: grid; grid-template-columns: repeat(var(--word-length,5),1fr); gap: 7px; }
 .wordle-tile { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 2px solid var(--rule); font-size: 28px; font-weight: bold; }
 .wordle-page .correct { background: #326f54 !important; color: white !important; }
 .wordle-page .present { background: #8b691f !important; color: white !important; }
