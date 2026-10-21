@@ -1371,7 +1371,7 @@ function Editor() {
       return;
     }
     setLeaving(true);
-    if (await save()) location.href = "/tools/wiki";
+    if (await save()) location.href = "/tools/wiki?library=1";
     else setLeaving(false);
   }
   async function showHistory() {
@@ -1410,22 +1410,9 @@ function Editor() {
   return (
     <main className="wiki-editor">
       <header className="wiki-toolbar">
-        {mode !== "preview" && <a className="workspace-utility-back" href="/tools/wiki?library=1" onClick={e=>{e.preventDefault();leave();}}>← Wiki</a>}
-        {mode === "preview" ? (
-          <a
-            href="/tools/wiki?library=1"
-            onClick={(event) => {
-              event.preventDefault();
-              leave();
-            }}
-          >
-            ← Wiki
-          </a>
-        ) : (
-          <button className="primary" disabled={leaving || uploading} onClick={leave}>
-            {leaving ? "Saving…" : "Save"}
-          </button>
-        )}
+        <button className="primary" disabled={leaving || uploading} onClick={leave}>
+          {leaving ? "Saving…" : "Save"}
+        </button>
         <input
           value={page.title}
           onChange={(e) => update({ title: e.target.value })}

@@ -65,6 +65,43 @@ class WikiEditorBrowserTests(unittest.TestCase):
             self.page.get_by_role('button', name='Captioned image' if captioned else 'Insert image', exact=not captioned).click()
         chooser.value.set_files({'name': 'sample.png', 'mimeType': 'image/png', 'buffer': data.getvalue()})
 
+    def test_save_returns_to_library_in_every_editor_mode(self):
+        from playwright.sync_api import expect
+        if not os.environ.get('WIKI_TEST_BASE_URL'):
+            from unittest.mock import patch
+            # Reproduce the launcher redirect that used to reopen the editor.
+            self.client.application.config['LAUNCHER_ENABLED'] = True
+            recent = patch('dashboard.launcher.recent', return_value=[{'url': '/tools/wiki/scroll-test'}])
+            recent.start()
+            self.addCleanup(recent.stop)
+        for mode in ('Edit', 'Split', 'Read'):
+            with self.subTest(mode=mode):
+                self.page.goto(self.base + '/tools/wiki/scroll-test?edit=1')
+                editor = self.page.get_by_role('textbox', name='Article Markdown')
+                content = 'Saved from ' + mode
+                editor.fill(content)
+                self.page.get_by_role('button', name=mode, exact=True).click()
+                toolbar = self.page.locator('.wiki-toolbar')
+                expect(toolbar.get_by_role('link', name='← Wiki', exact=True)).to_have_count(0)
+                save = toolbar.get_by_role('button', name='Save', exact=True)
+                expect(save).to_have_count(1)
+                save.click()
+                expect(self.page).to_have_url(self.base + '/tools/wiki?library=1')
+                stored = self.page.request.get(self.base + '/tools/wiki/api/pages/scroll-test').json()['page']
+                self.assertEqual(stored['content'], content)
+
+    def test_failed_save_keeps_editor_and_draft(self):
+        from playwright.sync_api import expect
+        self.page.route('**/api/pages/scroll-test', lambda route: route.fulfill(
+            status=503, content_type='application/json', body='{"error":"Server unavailable"}')
+            if route.request.method == 'PUT' else route.continue_())
+        self.editor.fill('Keep this unsaved draft')
+        self.page.locator('.wiki-toolbar').get_by_role('button', name='Save', exact=True).click()
+        expect(self.page.get_by_role('alert')).to_contain_text('Server unavailable')
+        expect(self.editor).to_have_value('Keep this unsaved draft')
+        expect(self.page.locator('.wiki-toolbar').get_by_role('button', name='Save', exact=True)).to_be_enabled()
+        self.assertIn('/tools/wiki/scroll-test', self.page.url)
+
     def test_infobox_rows_survive_pending_and_repeated_autosaves(self):
         content = ':::infobox\n| Field | Value |\n| --- | --- |\n| Author | First |\n:::\nAfter'
         pending = []
