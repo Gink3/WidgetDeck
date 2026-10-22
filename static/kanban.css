@@ -125,3 +125,7 @@
 #effort-related-items { max-height:18rem; overflow:auto; overflow-wrap:anywhere; }
 .kanban-heading-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
 .kanban-heading-actions .kanban-column-tools { display:flex; gap:10px; }
+.kanban-page .new-card-button { margin-left:auto; font-size:20px; line-height:1; }
+.kanban-page dialog.new-card { width: min(460px,calc(100vw - 32px)); }
+.new-card form { display:grid; gap:12px; }
+.new-card textarea { height:auto; min-height:100px; }

@@ -307,3 +307,25 @@ class KanbanBrowserTests(unittest.TestCase):
         with self.page.expect_navigation():self.page.get_by_role('button',name='Remove effort…',exact=True).click()
         self.assertEqual(self.page.locator('.effort-badge').count(),0)
         self.assertEqual(self.page.locator('.kanban-card').count(),1)
+
+    def test_column_add_dialog_cancels_and_creates_in_selected_column(self):
+        from playwright.sync_api import expect
+        page=self.page
+        page.get_by_role('button',name='Close item details',exact=True).click()
+        page.get_by_role('button',name='Add item to In Progress',exact=True).click()
+        dialog=page.get_by_role('dialog',name='Add item to In Progress',exact=True)
+        expect(dialog).to_be_visible()
+        dialog.get_by_role('button',name='Cancel',exact=True).click()
+        expect(dialog).not_to_be_visible()
+        page.get_by_role('button',name='Add item to In Progress',exact=True).click()
+        dialog.get_by_role('textbox',name='Item title',exact=True).fill('Created through dialog')
+        dialog.get_by_role('textbox',name='Notes',exact=True).fill('Dialog notes')
+        with page.expect_navigation():dialog.get_by_role('button',name='Add item',exact=True).click()
+        column=page.locator(f'[data-column="{self.boards[0]["columns"][1]["id"]}"]')
+        expect(column.get_by_role('button',name='Created through dialog',exact=False)).to_be_visible()
+        page.reload()
+        expect(column.get_by_role('button',name='Created through dialog',exact=False)).to_be_visible()
+        page.set_viewport_size({'width':375,'height':900})
+        page.get_by_role('button',name='Add item to To do',exact=True).click()
+        expect(page.get_by_role('dialog',name='Add item to To do',exact=True)).to_be_visible()
+        self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),375)

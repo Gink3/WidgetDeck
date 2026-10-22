@@ -14,7 +14,7 @@
     <section class="kanban-board" data-board="{{ selected.id }}" aria-label="{{ selected.name }} board">
     {% for column in columns %}
       <section class="kanban-column" data-column="{{ column.id }}" aria-labelledby="column-{{ column.id }}">
-        <div class="campaign-section-heading"><h2 id="column-{{ column.id }}">{{ column.name }}</h2><span class="column-count" aria-label="Item count">{{ items[column.id]|length }}</span><span class="column-order-controls" hidden><button type="button" data-column-step="-1" aria-label="Move {{ column.name }} column left">←</button><button type="button" data-column-step="1" aria-label="Move {{ column.name }} column right">→</button></span></div>
+        <div class="campaign-section-heading"><h2 id="column-{{ column.id }}">{{ column.name }}</h2><span class="column-count" aria-label="Item count">{{ items[column.id]|length }}</span><button type="button" class="new-card-button" data-open-dialog="new-card-{{ column.id }}" aria-label="Add item to {{ column.name }}" title="Add item">+</button><span class="column-order-controls" hidden><button type="button" data-column-step="-1" aria-label="Move {{ column.name }} column left">←</button><button type="button" data-column-step="1" aria-label="Move {{ column.name }} column right">→</button></span></div>
         <div class="kanban-dropzone">
           {% for item in items[column.id] %}
           <article class="kanban-card{% if item.cancelled_at %} is-cancelled{% endif %}" draggable="true" data-item="{{ item.id }}" data-revision="{{ item.revision }}" data-efforts="{{ item.efforts|map(attribute='id')|join(',') }}">
@@ -24,7 +24,7 @@
           </article>
           {% endfor %}
         </div>
-        <details class="new-card"><summary>+ Add item</summary><form method="post" autocomplete="off" action="{{ url_for('campaign_tools.kanban_add_item', board_id=selected.id) }}"><input type="hidden" name="column_id" value="{{ column.id }}"><label class="sr-only" for="new-title-{{ column.id }}">Item title</label><input id="new-title-{{ column.id }}" name="title" autocomplete="off" maxlength="160" placeholder="What needs to be done?" required><label class="sr-only" for="new-notes-{{ column.id }}">Notes</label><textarea id="new-notes-{{ column.id }}" name="notes" rows="3" maxlength="5000" placeholder="Notes (optional)"></textarea><button class="primary">Add item</button></form></details>
+        <dialog id="new-card-{{ column.id }}" class="campaign-dialog new-card" aria-labelledby="new-card-heading-{{ column.id }}"><h2 id="new-card-heading-{{ column.id }}">Add item to {{ column.name }}</h2><form method="post" autocomplete="off" action="{{ url_for('campaign_tools.kanban_add_item', board_id=selected.id) }}"><input type="hidden" name="column_id" value="{{ column.id }}"><label class="sr-only" for="new-title-{{ column.id }}">Item title</label><input id="new-title-{{ column.id }}" name="title" autocomplete="off" maxlength="160" placeholder="What needs to be done?" required><label class="sr-only" for="new-notes-{{ column.id }}">Notes</label><textarea id="new-notes-{{ column.id }}" name="notes" rows="3" maxlength="5000" placeholder="Notes (optional)"></textarea><div class="dialog-actions"><button class="primary">Add item</button><button type="button" data-close-dialog>Cancel</button></div></form></dialog>
       </section>
     {% endfor %}
     </section>
