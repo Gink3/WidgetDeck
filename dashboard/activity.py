@@ -89,6 +89,27 @@ def record_edit(area, resource_id, resource_name, before, after, action="edited"
     return event
 
 
+def record_action(area, resource_id, resource_name, action, *, quantity=1, unit="event"):
+    """Record a widget-defined action inside the caller's transaction.
+
+    The existing count fields carry the quantity and unit for non-text events.
+    No commit occurs here, so rolled-back widget changes leave no feed entry.
+    """
+    if type(quantity) is not int or not 1 <= quantity <= 1000000:
+        raise ValueError("Activity quantity must be an integer from 1 to 1,000,000.")
+    if not all(isinstance(value, str) and value.strip() and len(value) <= 80
+               for value in (area, action, unit)) or unit in {"lines", "words"}:
+        raise ValueError("Choose a widget activity area, action and non-text unit.")
+    event = dict(id=str(uuid.uuid4()), user_id=_owner_id(), area=area,
+                 resource_id=str(resource_id or ""), resource_name=str(resource_name or "Untitled")[:200],
+                 action=action, added_lines=quantity, removed_lines=0,
+                 occurred_at=timestamp(), count_unit=unit)
+    db().execute("""INSERT INTO activity_events(
+        id,user_id,area,resource_id,resource_name,action,added_lines,removed_lines,occurred_at,count_unit
+        ) VALUES(:id,:user_id,:area,:resource_id,:resource_name,:action,:added_lines,:removed_lines,:occurred_at,:count_unit)""", event)
+    return event
+
+
 def rename_resource(area, resource_id, resource_name):
     """Keep prior activity entries useful after an automatically named page is titled."""
     db().execute(

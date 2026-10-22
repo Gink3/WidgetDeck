@@ -334,3 +334,25 @@ after it succeeds, repeat the originally reviewed migration or start the selecte
 provider as appropriate. An exact completed-plan repeat does not rerun the hook.
 Unexpected file edits or missing/corrupt recovery data stop recovery for manual
 review; retain pending state and backups rather than clearing the startup guard.
+
+Widgets can define non-text activity actions using the optional `actions` argument:
+
+```python
+record = context.activity('painting', 'Painting', actions={
+    'painted': {'label': 'Painted', 'unit': 'miniature', 'plural': 'miniatures'},
+})
+# In the successful widget write transaction, under the signed-in account:
+with db():
+    save_painting()
+    record('painted', scheme_id, 'Space marine', quantity=2)
+```
+
+`activity(area, label)` remains compatible. The returned recorder accepts only
+registered actions and positive integer quantities (up to 1,000,000). `plural` is
+optional. Events use the current account, and roll back with the widget's write;
+the recorder never commits. The home feed displays the widget's action and unit
+(e.g. “Painted 2 miniatures”) alongside existing wiki line changes. The additive
+`actions` field on `/api/activity` describes registered actions. The existing
+`added_lines` count carries the quantity when `count_unit` is not `lines` or
+`words`. Wordle records each completed game once, including a reset after guesses;
+empty abandoned games do not produce a played event.

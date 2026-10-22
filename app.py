@@ -76,6 +76,7 @@ def home():
 @app.get("/api/activity")
 def activity_list():
     return jsonify(activity=recent_activity(limit=request.args.get("limit", 12)),
+                   actions=app.extensions['dashboard_widgets']['contributions'].activity_actions,
                    areas=app.extensions['dashboard_widgets']['contributions'].activity)
 
 

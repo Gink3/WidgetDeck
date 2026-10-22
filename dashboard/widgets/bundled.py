@@ -31,3 +31,7 @@ def register_widget(app, context):
         context.resolve(lambda resource, kind: _legacy_resolve(context.manifest.id, resource, kind))
     if context.manifest.id in {'wiki', 'kanban'}:
         context.activity(context.manifest.id, context.manifest.name)
+    if context.manifest.id == 'wordle':
+        app.extensions['wordle_activity'] = context.activity('wordle', 'Wordle', actions={
+            'played': {'label': 'Played', 'unit': 'game', 'plural': 'games'},
+        })

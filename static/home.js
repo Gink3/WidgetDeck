@@ -44,6 +44,12 @@
     unit.textContent = entry.count_unit === 'words' ? 'Edited' : 'lines';
     meta.append(unit);
     meta.title = entry.count_unit === 'words' ? 'Earlier edit; line totals were not recorded.' : `${entry.added_lines} lines added, ${entry.removed_lines} removed`;
+    if (!['lines', 'words'].includes(entry.count_unit)) {
+      meta.replaceChildren();
+      unit.textContent = `${entry.action} ${entry.added_lines} ${entry.count_unit}`;
+      meta.append(unit);
+      meta.title = unit.textContent;
+    }
     const time = document.createElement('time');
     time.dateTime = entry.occurred_at;
     time.textContent = formatTime(entry.occurred_at);
@@ -56,7 +62,7 @@
     .then(({ activity }) => {
       container.replaceChildren();
       if (!activity.length) {
-        container.innerHTML = '<p class="muted">Edits you make in Dashboard will appear here.</p>';
+        container.innerHTML = '<p class="muted">Your activity in Dashboard will appear here.</p>';
         return;
       }
       activity.forEach((entry) => container.append(activityItem(entry)));

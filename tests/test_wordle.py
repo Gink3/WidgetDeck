@@ -102,3 +102,18 @@ class WordleTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/tools/wordle/game',headers=headers).status_code,200)
         self.assertEqual(self.client.post('/api/tools/wordle/games',json={},headers=headers).status_code,401)
         self.assertEqual(self.client.get('/api/tools/kanban/boards',headers=headers).status_code,401)
+
+    def test_completed_games_emit_one_account_scoped_activity_event(self):
+        game=self.start().json['game']
+        self.assertEqual(self.client.get('/api/activity').json['activity'],[])
+        self.assertEqual(self.guess(game,'apple').status_code,200)
+        self.assertEqual(self.guess(game,'apple').status_code,409)
+        feed=self.client.get('/api/activity').json
+        self.assertEqual(len(feed['activity']),1)
+        event=feed['activity'][0]
+        self.assertEqual((event['area'],event['action'],event['added_lines'],event['count_unit']),('wordle','Played',1,'game'))
+        self.assertEqual(event['resource_id'],game['id'])
+        self.assertEqual(feed['actions']['wordle']['played']['plural'],'games')
+        other=self.app.test_client()
+        auth_post(other,'/register',{'username':'other-player','password':'test-only-password'})
+        self.assertEqual(other.get('/api/activity').json['activity'],[])

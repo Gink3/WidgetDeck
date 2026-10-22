@@ -13,6 +13,7 @@ class Contributions:
     settings: list = field(default_factory=list)
     search: dict = field(default_factory=dict)
     activity: dict = field(default_factory=dict)
+    activity_actions: dict = field(default_factory=dict)
     resolvers: dict = field(default_factory=dict)
 
 
@@ -74,10 +75,28 @@ class Context:
             raise WidgetError(f'Invalid or duplicate resolver: {self.manifest.id}.')
         self.contributions.resolvers[self.manifest.id] = resolver
 
-    def activity(self, area, label):
+    def activity(self, area, label, *, actions=None):
         if not isinstance(area, str) or not area or not isinstance(label, str) or not label or area in self.contributions.activity:
             raise WidgetError(f'Invalid or duplicate activity area: {area}.')
+        definitions = {} if actions is None else actions
+        if not isinstance(definitions, dict) or any(
+                not isinstance(key, str) or not key or not isinstance(value, dict)
+                or not {'label', 'unit'} <= value.keys() or value.keys() - {'label', 'unit', 'plural'}
+                or not all(isinstance(text, str) and text.strip() and len(text) <= 80 for text in value.values())
+                or value['unit'] in {'lines', 'words'} for key, value in definitions.items()):
+            raise WidgetError('Activity actions require names, display labels and non-text units.')
+        definitions = {key: dict(value) for key, value in definitions.items()}
         self.contributions.activity[area] = label
+        self.contributions.activity_actions[area] = definitions
+
+        def record(action, resource_id, resource_name, *, quantity=1):
+            from dashboard.activity import record_action
+            if action not in definitions:
+                raise WidgetError(f'Unknown activity action: {action}.')
+            definition = definitions[action]
+            return record_action(area, resource_id, resource_name, definition['label'],
+                                 quantity=quantity, unit=definition.get('plural', definition['unit']) if quantity != 1 else definition['unit'])
+        return record
 
 
 def register(app, manifests, *, capabilities=None):

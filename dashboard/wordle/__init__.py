@@ -7,7 +7,7 @@ import secrets
 import sqlite3
 import uuid
 from pathlib import Path
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import Blueprint, current_app, jsonify, render_template, request, session
 from dashboard.auth import current_user_id, login_required
 from dashboard.database import db, timestamp
 
@@ -84,6 +84,12 @@ def statistics():
             'current_streak':streak,'max_streak':maximum,'distribution':distribution}
 
 
+def record_played(game_id):
+    record = current_app.extensions.get('wordle_activity')
+    if record:
+        record('played', game_id, 'Wordle')
+
+
 @routes.get('/tools/wordle')
 @login_required
 def index():return render_template('wordle.html')
@@ -114,6 +120,8 @@ def new_game():
                 return jsonify(error='An active game exists. Reload before starting another.'),409
             status='lost' if json.loads(previous['guesses']) else 'abandoned'
             connection.execute('UPDATE wordle_games SET status=?,updated_at=?,revision=revision+1 WHERE id=?',(status,timestamp(),previous['id']))
+            if status == 'lost':
+                record_played(previous['id'])
         ident=uuid.uuid4().hex;now=timestamp()
         connection.execute('INSERT INTO wordle_games(id,user_id,answer,hard_mode,word_length,created_at,updated_at) VALUES(?,?,?,?,?,?,?)',
                            (ident,current_user_id(),secrets.choice(ANSWERS_BY_LENGTH[word_length]),data.get('hard_mode',False),word_length,now,now))
@@ -144,4 +152,6 @@ def submit_guess(game_id):
         status='won' if word==game['answer'] else 'lost' if len(guesses)==6 else 'active'
         connection.execute('UPDATE wordle_games SET guesses=?,status=?,revision=revision+1,updated_at=? WHERE id=?',
                            (json.dumps(guesses),status,timestamp(),game_id))
+        if status != 'active':
+            record_played(game_id)
     return jsonify(game=payload(connection.execute('SELECT * FROM wordle_games WHERE id=?',(game_id,)).fetchone()),stats=statistics())
