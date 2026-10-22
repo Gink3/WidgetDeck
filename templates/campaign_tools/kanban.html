@@ -37,7 +37,8 @@
         <label for="item-notes">Notes<textarea id="item-notes" maxlength="5000" rows="10" placeholder="Add context, ideas, or next steps…"></textarea></label>
         <div class="detail-save-row"><span id="item-save-state">All changes saved</span><button class="primary" id="save-item">Save changes</button></div>
       </form>
-      <details id="item-metadata-section" class="item-disclosure" hidden><summary>Details and efforts</summary><div class="item-disclosure-content"><dl class="item-metadata"><div><dt>Created</dt><dd id="item-created"></dd></div><div><dt>Updated</dt><dd id="item-updated"></dd></div></dl><fieldset id="item-efforts-section"><legend>Efforts</legend><div id="item-effort-options" class="effort-options"></div><p class="hint">Changes save automatically. Manage efforts from the board’s More menu.</p></fieldset></div></details>
+      <details id="item-metadata-section" class="item-disclosure" hidden><summary>Details</summary><div class="item-disclosure-content"><dl class="item-metadata"><div><dt>Created</dt><dd id="item-created"></dd></div><div><dt>Updated</dt><dd id="item-updated"></dd></div></dl></div></details>
+      <fieldset id="item-efforts-section"><legend>Efforts</legend><div id="item-effort-options" class="effort-options"></div><p class="hint">Changes save automatically. Manage efforts from the board’s More menu.</p></fieldset>
       <div id="item-actions" hidden><button type="button" id="cancel-item">Cancel item</button><button type="button" id="delete-item">Delete item…</button><p class="hint">Cancellation keeps this item and its history. Deletion is permanent.</p></div>
       <form id="item-transfer-form" hidden>
         <h3>Move to another board</h3>
