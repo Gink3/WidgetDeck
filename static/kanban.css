@@ -123,3 +123,5 @@
 #effort-manager form { display:grid; gap:.5rem; margin:1rem 0; }
 #effort-related { margin:.5rem 0; }
 #effort-related-items { max-height:18rem; overflow:auto; overflow-wrap:anywhere; }
+.kanban-heading-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
+.kanban-heading-actions .kanban-column-tools { display:flex; gap:10px; }
