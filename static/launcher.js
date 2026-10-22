@@ -20,6 +20,7 @@
     const data=await response.json();if(!response.ok)throw new Error(data.error||'Unable to update favourites.');
     state.favourite_destinations=data.favourite_destinations;window.dispatchEvent(new Event('launcher:favourites'));return data;
   };
+  if(document.querySelector('[data-launcher-pin="hidden"]'))return;
   const button=document.createElement('button');button.type='button';button.id='workspace-pin';button.hidden=true;button.className='workspace-destination-pin';document.querySelector('body>header nav')?.append(button);
   let target=null;
   async function render(){if(!target)return;try{const state=await window.launcherState(),pinned=(state.favourite_destinations||[]).some(item=>same(item,target));button.hidden=false;button.textContent=pinned?'★ Pinned':'☆ Pin this item';button.setAttribute('aria-pressed',String(pinned));}catch(_){}}
