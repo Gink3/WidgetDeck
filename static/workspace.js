@@ -43,7 +43,7 @@
   const dialog=document.querySelector('dialog.campaign-dialog');if(params.get('new')==='1'&&dialog){dialog.showModal();dialog.querySelector('input')?.focus();}
   const special=[['#zk-editor','#zk-workspace','#zk-library','Zettels'],['#rack-detail','#rack-workspace',null,'Paints']];
   special.forEach(([editorSelector,workspaceSelector,librarySelector,label])=>{
-    const editor=document.querySelector(editorSelector),workspace=document.querySelector(workspaceSelector);if(!editor||!workspace)return;
+    const editor=document.querySelector(editorSelector),workspace=document.querySelector(workspaceSelector);if(!editor||!workspace||workspace.dataset.workspaceLayout==='custom')return;
     const back=document.createElement('button');back.type='button';back.className='workspace-back workspace-mobile-back';back.textContent='← '+label;editor.prepend(back);
     back.addEventListener('click',()=>{workspace.classList.remove('mobile-editing');workspace.classList.add('mobile-browsing');document.querySelector(label==='Zettels'?'#zk-search':'#rack-search')?.focus();});
     window.addEventListener('workspace:selected',()=>{workspace.classList.remove('mobile-browsing');workspace.classList.add('mobile-editing');});
