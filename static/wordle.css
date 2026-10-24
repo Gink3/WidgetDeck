@@ -7,10 +7,8 @@
 }
 .wordle-page > h1,
 .wordle-page > .wordle-controls,
-.wordle-page > .hint:first-of-type,
 .wordle-page > .hint:last-of-type { grid-column: 1 / -1; }
 .wordle-controls { grid-row: 2; }
-.wordle-page > .hint:first-of-type { grid-row: 3; }
 #wordle-status { grid-column: 1; grid-row: 4; }
 #wordle-grid { grid-column: 1; grid-row: 5; width: 100%; }
 #wordle-guess-form { grid-column: 1; grid-row: 6; }
