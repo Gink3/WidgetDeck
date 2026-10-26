@@ -42,7 +42,7 @@ def _legacy_resolve(utility,ident,kind=''):
     owner=current_user_id();row=None;reference=''
     if utility == 'wiki':
         row=db().execute('SELECT title,slug FROM wiki_pages WHERE id=? AND user_id=? AND deleted_at IS NULL',(ident,owner)).fetchone()
-        url=url_for('wiki.editor',slug=row['slug'],edit=1) if row else ''
+        url=url_for('wiki.editor',slug=row['slug']) if row else ''
     elif utility == 'kanban':
         if kind == 'item':
             row=db().execute('SELECT i.title,i.board_id FROM kanban_items i JOIN kanban_boards b ON b.id=i.board_id WHERE i.id=? AND b.user_id=?',(ident,owner)).fetchone()

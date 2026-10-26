@@ -1038,6 +1038,7 @@ function Editor() {
     recoveredKeys = useRef([]);
   const [draftTab] = useState(() => newId());
   const uploadBusy = useRef(false);
+  const returningToLibrary = useRef(false);
   const settingsDialog = useRef(null);
   const textHistory = useRef({ past: [], future: [], replay: false });
   const textarea = useRef(null),
@@ -1196,6 +1197,7 @@ function Editor() {
   }, [page, save]);
   useEffect(() => {
     const protect = (event) => {
+      if (returningToLibrary.current) return;
       if (
         uploadBusy.current ||
         inflight.current ||
@@ -1365,6 +1367,23 @@ function Editor() {
     });
     moveCaret(start + before.length + selectedText.length, viewport);
   };
+  function returnToLibrary() {
+    if (uploadBusy.current) {
+      setError("Wait for the document upload to finish before leaving.");
+      return;
+    }
+    if (editable(draft.current) !== editable(baseline.current)) {
+      try {
+        localKey.current = storeDraft(localStorage, draft.current, baseline.current.revision, draftTab);
+      } catch {
+        setError("Unable to preserve this draft on this device. Save before returning to the library.");
+        return;
+      }
+    }
+    clearTimeout(timer.current);
+    returningToLibrary.current = true;
+    location.href = "/tools/wiki?library=1";
+  }
   async function leave() {
     if (uploadBusy.current) {
       setError("Wait for the document upload to finish before leaving.");
@@ -1410,6 +1429,7 @@ function Editor() {
   return (
     <main className="wiki-editor">
       <header className="wiki-toolbar">
+        <button onClick={returnToLibrary} disabled={uploading}>Wiki library</button>
         <button className="primary" disabled={leaving || uploading} onClick={leave}>
           {leaving ? "Saving…" : "Save"}
         </button>

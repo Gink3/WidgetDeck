@@ -40,10 +40,6 @@ def page_payload(page):
 @wiki.get("")
 @wiki.get("/")
 def index():
-    if not request.args and current_app.config.get("LAUNCHER_ENABLED"):
-        from dashboard.launcher import recent
-        previous=recent(1,'wiki')
-        if previous:return redirect(previous[0]['url'])
     return render_template("wiki/index.html")
 
 

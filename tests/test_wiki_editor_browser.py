@@ -90,6 +90,20 @@ class WikiEditorBrowserTests(unittest.TestCase):
                 stored = self.page.request.get(self.base + '/tools/wiki/api/pages/scroll-test').json()['page']
                 self.assertEqual(stored['content'], content)
 
+    def test_library_entry_and_local_draft_return(self):
+        from playwright.sync_api import expect
+        self.page.route('**/api/pages/scroll-test', lambda route: route.fulfill(
+            status=503, content_type='application/json', body='{"error":"Server unavailable"}')
+            if route.request.method == 'PUT' else route.continue_())
+        self.editor.fill('Draft preserved when returning to library')
+        self.page.get_by_role('button', name='Wiki library', exact=True).click()
+        expect(self.page).to_have_url(self.base + '/tools/wiki?library=1')
+        self.page.goto(self.base + '/tools/wiki')
+        expect(self.page.locator('#wiki-root')).to_have_attribute('data-page', 'library')
+        self.page.goto(self.base + '/tools/wiki/scroll-test')
+        expect(self.page.get_by_role('button', name='Read', exact=True)).to_have_class('selected')
+        self.assertTrue(self.page.evaluate("Object.values(localStorage).some(value => value.includes('Draft preserved when returning to library'))"))
+
     def test_failed_save_keeps_editor_and_draft(self):
         from playwright.sync_api import expect
         self.page.route('**/api/pages/scroll-test', lambda route: route.fulfill(
