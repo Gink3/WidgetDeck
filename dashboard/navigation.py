@@ -1,5 +1,6 @@
 """One category map for the home launcher and searchable utility navigation."""
 from flask import current_app, request, url_for
+from urllib.parse import urlsplit
 
 GROUPS = [('Games', [('wordle', 'Wordle', 'wordle.index')]), ('Knowledge', [('wiki', 'Wiki', 'wiki.index'), ('mind-maps', 'Mind Maps', 'mindmaps.index')]), ('Tools', [('kanban', 'Kanban', 'campaign_tools.kanban'), ('image-converter', 'Image Converter', 'image_converter.index')])]
 METADATA = {'wordle': {'icon': '▦', 'description': 'Unlimited five, six, and seven-letter English puzzles with private statistics and hard mode.'}, 'wiki': {'icon': '▤', 'description': 'Write linked Markdown pages, keep notes together, and add images where they help.'}, 'mind-maps': {'icon': '⌘', 'description': 'Build private idea maps, plan projects, and connect the threads that matter.'}, 'kanban': {'icon': '▤', 'description': 'Move cards through a workflow designed around each individual project.'}, 'image-converter': {'icon': '▧', 'description': 'Convert AVIF, PNG, JPEG, and WebP images right in your browser workflow.'}}
@@ -52,4 +53,10 @@ def init_navigation(app):
     def utility_navigation():
         state = current_app.extensions.get('dashboard_widgets')
         templates = [item['template'] for item in state['contributions'].settings] if state is not None else []
-        return {'utility_groups': utility_groups(), 'widget_settings': templates}
+        groups = utility_groups()
+        matches = [link for group in groups for link in group['links']
+                   if not link['external'] and (request.path == urlsplit(link['url']).path
+                   or request.path.startswith(urlsplit(link['url']).path.rstrip('/') + '/'))]
+        active = max(matches, key=lambda link: len(link['url']), default=None)
+        return {'utility_groups': groups, 'widget_settings': templates,
+                'active_widget_name': active['label'] if active else None}

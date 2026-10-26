@@ -13,17 +13,15 @@
 })();
 
 (() => {
-  const same=(a,b)=>a.utility===b.utility&&String(a.id)===String(b.id)&&(a.kind||'')===(b.kind||'');
   window.pinLauncherTarget=async(target,pinned)=>{
     const state=await window.launcherState();
     const response=await fetch('/api/launcher/favourite-targets',{method:'PUT',headers:{'Content-Type':'application/json','X-CSRF-Token':state.csrf_token},body:JSON.stringify({...target,pinned})});
     const data=await response.json();if(!response.ok)throw new Error(data.error||'Unable to update favourites.');
     state.favourite_destinations=data.favourite_destinations;window.dispatchEvent(new Event('launcher:favourites'));return data;
   };
-  if(document.querySelector('[data-launcher-pin="hidden"]'))return;
-  const button=document.createElement('button');button.type='button';button.id='workspace-pin';button.hidden=true;button.className='workspace-destination-pin';document.querySelector('body>header nav')?.append(button);
-  let target=null;
-  async function render(){if(!target)return;try{const state=await window.launcherState(),pinned=(state.favourite_destinations||[]).some(item=>same(item,target));button.hidden=false;button.textContent=pinned?'★ Pinned':'☆ Pin this item';button.setAttribute('aria-pressed',String(pinned));}catch(_){}}
-  window.setLauncherDestination=(utility,id,kind='')=>{target=id?{utility,id:String(id),kind}:null;button.hidden=!target;if(target)render();};
-  button.addEventListener('click',async()=>{button.disabled=true;try{await window.pinLauncherTarget(target,button.getAttribute('aria-pressed')!=='true');await render();}catch(error){button.textContent=error.message;}finally{button.disabled=false;}});
+  // Retained for widgets that announce their current destination. Pin controls
+  // live in the launcher so every widget shares the same global navigation.
+  window.setLauncherDestination=(utility,id,kind='')=>{
+    window.launcherDestination=id?{utility,id:String(id),kind}:null;
+  };
 })();
