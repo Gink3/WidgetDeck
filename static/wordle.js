@@ -2,6 +2,7 @@
   'use strict';
   const $ = selector => document.querySelector(selector);
   const input = $('#wordle-guess');
+  const play = $('#wordle-play');
   const lengthSelect = $('#wordle-length');
   let game = null, csrf = '', busy = false;
   const status = message => { $('#wordle-status').textContent = message; };
@@ -22,6 +23,31 @@
     lengthSelect.disabled = busy;
     $('#wordle-keyboard').querySelectorAll('button').forEach(button => { button.disabled = !active || busy; });
   }
+  function draft() {
+    const row = $('#wordle-grid .wordle-row.current');
+    row?.querySelectorAll('.wordle-tile').forEach((tile, index) => {
+      const letter = input.value[index] || '';
+      tile.textContent = letter; tile.classList.toggle('filled', Boolean(letter));
+      tile.setAttribute('aria-label', letter ? `${letter}: not submitted` : 'Empty');
+    });
+    $('#wordle-draft').textContent = input.value ? `Current guess: ${input.value.split('').join(' ')}` : 'Current guess is empty.';
+  }
+  function enterKey(key) {
+    if (busy || game?.status !== 'active') return;
+    if (key === 'Enter') $('#wordle-guess-form').requestSubmit();
+    else {
+      if (key === 'Backspace') input.value = input.value.slice(0,-1);
+      else if (/^[a-z]$/i.test(key) && input.value.length < Number(input.maxLength)) input.value += key.toUpperCase();
+      draft();
+    }
+  }
+  play.addEventListener('keydown', event => {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.target.closest('input,select,textarea,[contenteditable="true"]')) return;
+    if (/^[a-z]$/i.test(event.key) || event.key === 'Enter' || event.key === 'Backspace') {
+      event.preventDefault(); enterKey(event.key);
+    }
+  });
+  input.addEventListener('input', draft);
   function render(data) {
     game = data.game; if (data.csrf_token) csrf = data.csrf_token;
     // Initialize the next-game settings from a saved game when it is loaded. Keep
@@ -38,6 +64,7 @@
     for (let row = 0; row < 6; row++) {
       const line = document.createElement('div'); line.className = 'wordle-row';
       const entry = game?.guesses[row];
+      if (!entry && game?.status === 'active' && row === game.guesses.length) line.classList.add('current');
       for (let column = 0; column < wordLength; column++) {
         const tile = document.createElement('span'); const letter = entry?.word[column], mark = entry?.marks[column];
         tile.className = 'wordle-tile' + (mark ? ' '+mark : ''); tile.textContent = letter?.toUpperCase() || '';
@@ -57,25 +84,25 @@
     grid.style.setProperty('--word-length', wordLength);
     status(!game ? 'Start a new game.' : game.status === 'won' ? `You won in ${game.guesses.length}! The word was ${game.answer.toUpperCase()}.`
       : game.status === 'lost' ? `The word was ${game.answer.toUpperCase()}. Try another game.` : `${game.guesses.length} of 6 guesses used${game.hard_mode ? ' · Hard mode' : ''}.`);
-    controls();
+    draft(); controls();
+  }
+  function keyButton(key, label=key.toUpperCase()) {
+    const button = document.createElement('button');button.type = 'button';button.textContent = label;
+    if (/^[a-z]$/i.test(key)) button.dataset.letter = key;
+    else { button.dataset.action = key;button.setAttribute('aria-label',key); }
+    button.addEventListener('click',() => { enterKey(key);play.focus({preventScroll:true}); });
+    return button;
   }
   for (const letters of ['qwertyuiop','asdfghjkl','zxcvbnm']) {
-    const row = document.createElement('div'); row.className = 'wordle-key-row';
-    for (const letter of letters) {
-      const button = document.createElement('button');button.type = 'button';button.dataset.letter = letter;button.textContent = letter.toUpperCase();
-      button.addEventListener('click',() => { if (input.value.length < Number(input.maxLength)) input.value += letter.toUpperCase(); input.focus(); });row.append(button);
-    }
+    const row = document.createElement('div');row.className = 'wordle-key-row';
+    if (letters === 'zxcvbnm') row.append(keyButton('Enter','Enter'));
+    for (const letter of letters) row.append(keyButton(letter));
+    if (letters === 'zxcvbnm') row.append(keyButton('Backspace','⌫'));
     $('#wordle-keyboard').append(row);
   }
-  const actions = document.createElement('div'); actions.className = 'wordle-key-row';
-  for (const label of ['Enter','Backspace']) {
-    const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
-    button.addEventListener('click',() => { if (label === 'Enter') $('#wordle-guess-form').requestSubmit(); else { input.value = input.value.slice(0,-1); input.focus(); } });actions.append(button);
-  }
-  $('#wordle-keyboard').append(actions);
   async function load() {
     busy = true;controls();
-    try { render(await api('game')); } catch(error) { status(error.message); }
+    try { const data = await api('game'); input.value = ''; render(data); if(document.activeElement === document.body) play.focus({preventScroll:true}); } catch(error) { status(error.message); }
     finally { busy = false; controls(); }
   }
   $('#wordle-refresh').addEventListener('click',load);
@@ -84,16 +111,17 @@
     const reset = game?.status === 'active';
     if (reset && game.guesses.length && !window.confirm('Starting another game counts this game as a loss. Continue?')) return;
     busy = true;controls();
-    try { render(await api('games',{hard_mode:$('#wordle-hard').checked,word_length:Number(lengthSelect.value),reset,revision:game?.revision})); input.value = ''; }
+    try { const data = await api('games',{hard_mode:$('#wordle-hard').checked,word_length:Number(lengthSelect.value),reset,revision:game?.revision}); input.value = ''; render(data); }
     catch(error) { status(error.message); }
-    finally { busy = false;controls();if (!input.disabled) input.focus(); }
+    finally { busy = false;controls();if (!input.disabled) play.focus({preventScroll:true}); }
   });
   $('#wordle-guess-form').addEventListener('submit',async event => {
     event.preventDefault();if (busy || game?.status !== 'active') return;
+    if(input.value.length !== Number(input.maxLength)){status(`Enter ${input.maxLength} letters.`);return;}
     busy = true;controls();
-    try { render(await api(`games/${game.id}/guesses`,{word:input.value,revision:game.revision}));input.value = ''; }
+    try { const data = await api(`games/${game.id}/guesses`,{word:input.value,revision:game.revision});input.value = '';render(data); }
     catch(error) { status(error.message); }
-    finally { busy = false;controls();if (!input.disabled) input.focus(); }
+    finally { busy = false;controls();if (!input.disabled) play.focus({preventScroll:true}); }
   });
   controls();load();
 })();
