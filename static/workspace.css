@@ -23,5 +23,6 @@ body .primary,body .dashboard .primary,body dialog .primary,body .zk-page .prima
 #utility-categories-panel a,.launcher-category-manage{color:var(--accent-hi)}
 .category-item{max-width:100%}.category-item>span{min-width:0;overflow-wrap:anywhere}.category-item>button{flex-shrink:0}.category-assignment select{min-width:0}.utility-category-heading,.utility-menu-group h2{overflow-wrap:anywhere}
 /* A quiet vertical purple backdrop for the home workspace. */
-body:has(.launcher-page){background:linear-gradient(180deg,#24172f 0%,#191320 55%,#110e18 100%);background-attachment:fixed}
-.dashboard.launcher-page{background:transparent}
+:root{--workspace-background:linear-gradient(180deg,#24172f 0%,#191320 55%,#110e18 100%)}
+body:has(.launcher-page,.workspace-gradient,.kanban-page){background:var(--workspace-background);background-attachment:fixed}
+.dashboard:is(.launcher-page,.workspace-gradient,.kanban-page){background:transparent}
