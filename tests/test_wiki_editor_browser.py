@@ -104,6 +104,25 @@ class WikiEditorBrowserTests(unittest.TestCase):
         expect(self.page.get_by_role('button', name='Read', exact=True)).to_have_class('selected')
         self.assertTrue(self.page.evaluate("Object.values(localStorage).some(value => value.includes('Draft preserved when returning to library'))"))
 
+    def test_library_cards_and_shortcuts_open_reading_mode(self):
+        from playwright.sync_api import expect
+        self.page.goto(self.base + '/tools/wiki')
+        card = self.page.locator('.wiki-page-card').filter(has=self.page.get_by_role('heading', name='Scroll test', exact=True))
+        card.get_by_role('button', name='Pin Scroll test', exact=True).click()
+        card.get_by_role('link', name='Scroll test', exact=True).click()
+        expect(self.page.get_by_role('button', name='Read', exact=True)).to_have_class('selected')
+        expect(self.page.get_by_role('textbox', name='Article Markdown')).to_have_count(0)
+        self.page.get_by_role('button', name='Wiki library', exact=True).click()
+        shortcuts = self.page.locator('.wiki-shortcut-pages')
+        links = shortcuts.get_by_role('link', name='Scroll test', exact=True)
+        expect(links).to_have_count(2)
+        for href in links.evaluate_all('(links) => links.map(link => link.getAttribute("href"))'):
+            self.assertNotIn('edit=1', href)
+        links.first.click()
+        expect(self.page.get_by_role('button', name='Read', exact=True)).to_have_class('selected')
+        self.page.get_by_role('button', name='Edit', exact=True).click()
+        expect(self.page.get_by_role('textbox', name='Article Markdown')).to_be_visible()
+
     def test_failed_save_keeps_editor_and_draft(self):
         from playwright.sync_api import expect
         self.page.route('**/api/pages/scroll-test', lambda route: route.fulfill(

@@ -398,7 +398,7 @@ function Preview({ page, pages }) {
               <h2>Pages in trash</h2>
               {deleted.map((p) => (
                 <p key={p.slug}>
-                  <PageLink href={"/tools/wiki/" + p.slug + "?edit=1"} pages={pages}>
+                  <PageLink href={"/tools/wiki/" + p.slug} pages={pages}>
                     {p.title}
                   </PageLink>
                 </p>
@@ -740,7 +740,7 @@ function Library() {
       </div>
       <p role="status">{error}</p>
       <div className="wiki-shortcuts">
-        {[["Pinned pages", navigation.pinned], ["Recently viewed", navigation.recent]].map(([title, items]) => <section key={title} className="wiki-shortcut-pages"><h2>{title}</h2>{items.length ? <ul>{items.map(p => <li key={p.id}><a href={`/tools/wiki/${p.slug}?edit=1`}>{p.title}</a>{title === "Pinned pages" && <button aria-label={`Unpin ${p.title}`} onClick={async () => { try { await api(`/pages/${p.slug}/navigation`, { method: "PUT", body: JSON.stringify({ pinned: false }) }); setNavigation(await api("/navigation")); } catch(e) { setError(e.message); } }}>Unpin</button>}</li>)}</ul> : <p>{title === "Pinned pages" ? "Pin pages below to keep them handy." : "Pages you open will appear here."}</p>}</section>)}
+        {[["Pinned pages", navigation.pinned], ["Recently viewed", navigation.recent]].map(([title, items]) => <section key={title} className="wiki-shortcut-pages"><h2>{title}</h2>{items.length ? <ul>{items.map(p => <li key={p.id}><a href={`/tools/wiki/${p.slug}`}>{p.title}</a>{title === "Pinned pages" && <button aria-label={`Unpin ${p.title}`} onClick={async () => { try { await api(`/pages/${p.slug}/navigation`, { method: "PUT", body: JSON.stringify({ pinned: false }) }); setNavigation(await api("/navigation")); } catch(e) { setError(e.message); } }}>Unpin</button>}</li>)}</ul> : <p>{title === "Pinned pages" ? "Pin pages below to keep them handy." : "Pages you open will appear here."}</p>}</section>)}
       </div>
       <section className="wiki-page-grid">
         {pages
@@ -760,10 +760,10 @@ function Library() {
             <article className="wiki-page-card" key={p.id}>
               <div className="wiki-card-heading">
 
-                <a href={"/tools/wiki/" + p.slug + "?edit=1"}><h2>{p.title}</h2></a>
+                <a href={"/tools/wiki/" + p.slug}><h2>{p.title}</h2></a>
               {view !== "trash" && <button aria-pressed={navigation.pinned.some(n => n.id === p.id)} aria-label={`${navigation.pinned.some(n => n.id === p.id) ? "Unpin" : "Pin"} ${p.title}`} onClick={async () => { try { await api(`/pages/${p.slug}/navigation`, { method: "PUT", body: JSON.stringify({ pinned: !navigation.pinned.some(n => n.id === p.id) }) }); setNavigation(await api("/navigation")); } catch(e) { setError(e.message); } }}>{navigation.pinned.some(n => n.id === p.id) ? "Pinned ★" : "Pin ☆"}</button>}
               </div>
-              <a href={"/tools/wiki/" + p.slug + "?edit=1"}>
+              <a href={"/tools/wiki/" + p.slug}>
                 <small>
                   {p.metadata.status || "draft"} ·{" "}
                   {new Date(p.updated_at).toLocaleDateString()}
