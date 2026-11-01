@@ -4,6 +4,10 @@ import json
 import hmac
 import os
 import sqlite3
+import hashlib
+import secrets
+import time
+from datetime import timedelta
 from functools import wraps
 
 from flask import current_app, g, jsonify, redirect, request, session, url_for
@@ -16,6 +20,12 @@ def init_auth(app):
     app.config.setdefault('DASHBOARD_REGISTRATION_ENABLED',
                           os.environ.get('DASHBOARD_REGISTRATION_ENABLED', 'true').lower() in {'1', 'true', 'yes'})
     app.jinja_env.globals['registration_enabled'] = registration_enabled
+    remember_days = int(os.environ.get('DASHBOARD_REMEMBER_DAYS', '30'))
+    if not 1 <= remember_days <= 365:
+        raise ValueError('DASHBOARD_REMEMBER_DAYS must be between 1 and 365.')
+    app.config.setdefault('DASHBOARD_REMEMBER_DAYS', remember_days)
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=remember_days)
+    app.jinja_env.globals['remember_days'] = lambda: current_app.config['DASHBOARD_REMEMBER_DAYS']
     # Deployments should set DASHBOARD_SECRET_KEY so sessions survive restarts.
     # A random local fallback is safer than a publicly known signing key.
     if not app.config.get("SECRET_KEY"):
@@ -44,6 +54,9 @@ def init_auth(app):
     with sqlite3.connect(app.config["DASHBOARD_DATABASE"]) as connection:
         connection.execute("CREATE TABLE IF NOT EXISTS dashboard_auth_attempts(id INTEGER PRIMARY KEY, bucket TEXT NOT NULL, attempted_at REAL NOT NULL)")
         connection.execute("CREATE INDEX IF NOT EXISTS dashboard_auth_attempt_bucket ON dashboard_auth_attempts(bucket,attempted_at)")
+        connection.execute('''CREATE TABLE IF NOT EXISTS dashboard_browser_sessions (
+            token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires_at REAL NOT NULL)''')
+        connection.execute('CREATE INDEX IF NOT EXISTS dashboard_browser_sessions_expiry ON dashboard_browser_sessions(expires_at)')
     from dashboard.auth_security import csrf_token
     app.jinja_env.globals["auth_csrf_token"] = csrf_token
 
@@ -97,6 +110,14 @@ def current_user():
             g.dashboard_user = None
         else:
             from dashboard.database import db
+            token = session.get('browser_session')
+            if token:
+                saved = db().execute('SELECT user_id, expires_at FROM dashboard_browser_sessions WHERE token_hash=?',
+                                     (_session_hash(token),)).fetchone()
+                if not saved or saved['user_id'] != user_id or saved['expires_at'] <= time.time():
+                    session.clear()
+                    g.dashboard_user = None
+                    return None
             g.dashboard_user = db().execute(
                 "SELECT id, username, is_admin FROM dashboard_users WHERE id=?", (user_id,)
             ).fetchone()
@@ -141,6 +162,36 @@ def registration_enabled():
     return bool(current_app.config['DASHBOARD_REGISTRATION_ENABLED'])
 
 
+def _session_hash(token):
+    return hashlib.sha256(str(token).encode()).hexdigest()
+
+
+def _revoke_browser_session():
+    from dashboard.database import db
+    if session.get('browser_session'):
+        db().execute('DELETE FROM dashboard_browser_sessions WHERE token_hash=?',
+                     (_session_hash(session['browser_session']),))
+        db().commit()
+
+
+def _start_browser_session(user_id, remember=False):
+    from dashboard.database import db
+    _revoke_browser_session()
+    session.clear()
+    token = secrets.token_urlsafe(32)
+    lifetime = (timedelta(days=current_app.config['DASHBOARD_REMEMBER_DAYS']) if remember
+                else current_app.permanent_session_lifetime)
+    expires = time.time() + lifetime.total_seconds()
+    db().execute('DELETE FROM dashboard_browser_sessions WHERE expires_at<=?', (time.time(),))
+    db().execute('INSERT INTO dashboard_browser_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)',
+                 (_session_hash(token), user_id, expires))
+    db().commit()
+    session['user_id'] = user_id
+    session['browser_session'] = token
+    session['browser_expires_at'] = expires
+    session.permanent = remember
+
+
 def register_auth_routes(app):
     @app.get("/login")
     def login():
@@ -160,8 +211,7 @@ def register_auth_routes(app):
             return current_app.jinja_env.get_or_select_template("login.html").render(
                 error="Username or password is incorrect.", next=request.form.get("next", "")
             ), 401
-        session.clear()
-        session["user_id"] = user["id"]
+        _start_browser_session(user['id'], request.form.get('remember') == '1')
         return redirect(_safe_destination(request.form.get("next")))
 
     @app.get("/register")
@@ -197,18 +247,31 @@ def register_auth_routes(app):
             db().commit()
         except sqlite3.IntegrityError:
             return current_app.jinja_env.get_or_select_template("register.html").render(error="That username is already taken."), 409
-        session.clear()
-        session["user_id"] = cursor.lastrowid
+        _start_browser_session(cursor.lastrowid)
         return redirect(url_for("home"))
 
     @app.post("/logout")
     def logout():
+        _revoke_browser_session()
         session.clear()
         return redirect(url_for("login"))
 
+    @app.get('/api/session')
+    def browser_session_status():
+        user = current_user()
+        if request.headers.get('Authorization') or not user:
+            response = jsonify(error='Sign in is required.')
+            response.status_code = 401
+        else:
+            response = jsonify(user_id=user['id'], expires_at=session.get('browser_expires_at'),
+                               permanent=session.permanent)
+        response.headers['Cache-Control'] = 'private, no-store'
+        return response
+
 
 def _safe_destination(destination):
-    if destination and destination.startswith("/") and not destination.startswith("//"):
+    if (destination and destination.startswith('/') and not destination.startswith('//')
+            and '\\' not in destination and not any(ord(c) < 32 for c in destination)):
         return destination
     return url_for("home")
 
@@ -216,8 +279,10 @@ def _safe_destination(destination):
 def _check_auth_form(action):
     from dashboard.auth_security import valid_csrf, consume_budget
     if not valid_csrf():
-        return current_app.jinja_env.get_template(action+".html").render(error="Reload this page and try again."), 403
+        return current_app.jinja_env.get_template(action+".html").render(
+            error="Reload this page and try again.", next=request.form.get('next', '')), 403
     if not consume_budget(action):
-        response = current_app.make_response((current_app.jinja_env.get_template(action+".html").render(error="Too many attempts. Try again later."),429))
+        response = current_app.make_response((current_app.jinja_env.get_template(action+".html").render(
+            error="Too many attempts. Try again later.", next=request.form.get('next', '')),429))
         response.headers['Retry-After'] = str(current_app.config.get('AUTH_RATE_WINDOW',900))
         return response

@@ -16,3 +16,25 @@ new users to contact the administrator instead of offering account creation.
 Registration remains enabled by default for compatibility. To enroll someone,
 an operator can temporarily enable registration during a controlled enrollment
 window, then disable it again. A deployment/restart is a separate operator action.
+
+## Sessions
+
+Sign in with “Keep me signed in” on a personal device to retain the cookie across
+browser/app restarts. The default is 30 days, configurable with
+`DASHBOARD_REMEMBER_DAYS` (1–365). Without the checkbox, the cookie lasts for the
+browser session. New logins also have an absolute server-side expiry: activity
+does not extend it. Only a hash of the random session identifier is stored on
+the server. Credentials are never stored in localStorage.
+
+Signing out revokes the current new-style session on the server, so replaying
+its old cookie cannot restore access. Other devices remain signed in. Sessions
+created before this upgrade remain valid under the existing cookie policy;
+they acquire the new expiry/revocation protection on their next login. Rotating
+the server signing secret invalidates all signed cookies, including legacy
+sessions. Removing an account prevents further authenticated access.
+
+`GET /api/session` returns the current browser account ID, persistence flag and
+absolute expiry (null for legacy sessions), with `private, no-store`. It returns
+401 after expiry or logout; it is not an integration-key endpoint. Sign-in
+preserves local deep links, including after incorrect credentials. Draft recovery
+and foreground refresh build on this endpoint without replaying failed writes.

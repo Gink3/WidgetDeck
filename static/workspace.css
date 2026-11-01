@@ -26,3 +26,5 @@ body .primary,body .dashboard .primary,body dialog .primary,body .zk-page .prima
 :root{--workspace-background:linear-gradient(180deg,#24172f 0%,#191320 55%,#110e18 100%)}
 body:has(.launcher-page,.workspace-gradient,.kanban-page){background:var(--workspace-background);background-attachment:fixed}
 .dashboard:is(.launcher-page,.workspace-gradient,.kanban-page){background:transparent}
+
+.remember-login{display:flex;align-items:center;gap:10px;font-weight:normal}.remember-login input{width:20px;height:20px;flex:none}.remember-login{min-height:44px}
