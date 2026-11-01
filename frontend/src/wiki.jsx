@@ -46,7 +46,7 @@ import { EditorToolbar } from "./wiki-toolbar.jsx";
 import { formatTableAt, editTableAt } from "./wiki-tables.mjs";
 import { WikiGraph } from "./wiki-graph.jsx";
 import { Inbox } from "./wiki-inbox.jsx";
-import { storeDraft, recoverableDrafts } from "./wiki-drafts.mjs";
+import { storeDraft, recoverableDrafts, clearOwnerDrafts } from "./wiki-drafts.mjs";
 const emptyMetadata = {
   type: "Article",
   status: "draft",
@@ -1037,6 +1037,7 @@ function Editor() {
   const localKey = useRef(null),
     recoveredKeys = useRef([]);
   const [draftTab] = useState(() => newId());
+  useEffect(() => window.WidgetDeckDrafts?.onLogout(() => clearOwnerDrafts(localStorage,document.body.dataset.owner)), []);
   const uploadBusy = useRef(false);
   const returningToLibrary = useRef(false);
   const settingsDialog = useRef(null);

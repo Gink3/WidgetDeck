@@ -183,7 +183,22 @@ test("topic lists react to properties, exclude self and trash, and sort", () => 
 });
 
 import { syncInfobox, articleHeadings } from "../frontend/src/wiki-utils.mjs";
-import { storeDraft, recoverableDrafts } from "../frontend/src/wiki-drafts.mjs";
+import { storeDraft, recoverableDrafts, clearOwnerDrafts } from "../frontend/src/wiki-drafts.mjs";
+test("Wiki draft retention is bounded and logout preserves other owners", () => {
+  const records=new Map(), storage={setItem:(k,v)=>records.set(k,v),getItem:k=>records.get(k),key:i=>[...records.keys()][i],removeItem:k=>records.delete(k),get length(){return records.size;}};
+  const page={id:1,user_id:1,title:'A',content:'Text',metadata:{},aliases:[]};
+  storeDraft(storage,page,1,'first'); const key=[...records.keys()][0], original=records.get(key);
+  assert.throws(()=>storeDraft(storage,{...page,content:'x'.repeat(530000)},1,'first'),/limit/);
+  assert.equal(records.get(key),original);
+  for(let i=0;i<19;i++)storeDraft(storage,{...page,id:i+2},1,'tab');
+  assert.throws(()=>storeDraft(storage,{...page,id:99},1,'tab'),/full/);
+  const old=JSON.parse(original);old.savedAt=new Date(Date.now()-8*86400000).toISOString();records.set(key,JSON.stringify(old));
+  assert.equal(recoverableDrafts(storage,page).length,0);assert.equal(records.has(key),false);
+  storeDraft(storage,{...page,user_id:2},1,'other');
+  records.set('dashboard:wiki:draft:1:broken','retained damaged bytes');
+  clearOwnerDrafts(storage,1);
+  assert.equal(records.size,1);assert.ok([...records.keys()][0].startsWith('dashboard:wiki:draft:2:'));
+});
 test("local recovery is owner scoped and preserves draft conflicts", () => {
   const records = new Map();
   const storage = {
