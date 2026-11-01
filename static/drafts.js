@@ -25,7 +25,7 @@
       } catch (_) { return []; } // Damaged data is retained, never replaced implicitly.
     });
   }
-  function create({id, resource, read, restore, base, host, title = 'Recover unsaved edits', dirty = () => !same(read(),base()), validate = value => value !== undefined}) {
+  function create({id, resource, read, restore, base, host, title = 'Recover unsaved edits', dirty = () => !same(read(),base()), validate = value => value !== undefined, canRestore = () => true}) {
     if (!/^[a-z0-9-]+$/.test(id) || typeof resource !== 'string' || resource.length > 512) throw new Error('Invalid recovery resource.');
     const identity = id + ':' + resource, key = prefix + encodeURIComponent(identity) + '.' + tab;
     let disposed = false, restoredKey, timer, candidate;
@@ -79,6 +79,7 @@
     recover.addEventListener('click', () => {
       if (!active || document.body.dataset.accountMismatch) return;
       refresh(); if (!candidate || recover.disabled) return;
+      if (!canRestore()) {notice('Wait for the current request to finish before restoring a draft.');return;}
       if (dirty() && !confirm('Replace the current unsaved edits with this recovery draft?')) return;
       try {
         restoredKey = candidate.key; restore(JSON.parse(JSON.stringify(candidate.value))); capture();

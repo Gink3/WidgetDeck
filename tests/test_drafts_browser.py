@@ -32,6 +32,7 @@ class DraftRecoveryBrowserTests(unittest.TestCase):
             read:()=>({text:document.querySelector('#text').value}),base:()=>({revision:window.revision}),
             restore:value=>{document.querySelector('#text').value=value.text;},
             dirty:()=>document.querySelector('#text').value!==window.baseline,
+            canRestore:()=>window.recoveryAllowed!==false,
             validate:value=>typeof value?.text==='string'});
           document.querySelector('#text').addEventListener('input',()=>recovery.changed());
         }''',revision)
@@ -127,3 +128,15 @@ class DraftRecoveryBrowserTests(unittest.TestCase):
             expect(page.locator('.draft-recovery')).to_be_hidden()
             self.assertEqual(page.evaluate("Object.keys(localStorage).filter(k=>k.startsWith('widgetdeck.draft.v1.')).length"),0)
             browser.close()
+
+    def test_restore_waits_for_an_inflight_widget_request(self):
+        from playwright.sync_api import sync_playwright,expect
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();page=browser.new_page();self.editor(page)
+            page.locator('#text').fill('Keep this draft');page.evaluate('recovery.capture()')
+            self.editor(page);page.evaluate('window.recoveryAllowed=false')
+            page.locator('.draft-recovery>summary').click();page.get_by_role('button',name='Restore draft',exact=True).click()
+            expect(page.locator('.draft-recovery')).to_contain_text('Wait for the current request')
+            expect(page.locator('#text')).to_have_value('')
+            page.evaluate('window.recoveryAllowed=true');page.get_by_role('button',name='Restore draft',exact=True).click()
+            expect(page.locator('#text')).to_have_value('Keep this draft');browser.close()

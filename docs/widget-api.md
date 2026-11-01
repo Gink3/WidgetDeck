@@ -79,6 +79,8 @@ validate, title})` binds one editor to a stable widget ID/resource and returns
 `changed()`, `capture()`, `clear()`, `refresh()` and `dispose({preserve:true})`.
 `read()` returns JSON content; `base()` returns its server revision or other
 stable baseline; `restore(value)` updates the editor without submitting it.
+An optional `canRestore()` guard rejects recovery while a widget request is in
+flight; this keeps a pending response from replacing newly recovered work.
 Call `changed()` on edits and `clear()` only after the server acknowledges the
 corresponding snapshot. Dispose a controller before changing resource identity.
 Never use this for credentials, file objects or an offline write queue.

@@ -134,7 +134,7 @@ function Library() {
 
 function Editor() {
   const root = document.getElementById('mindmap-root'); const initialId = root.dataset.mapId;
-  const [publishing,setPublishing]=useState(false);
+  const [publishing,setPublishing]=useState(false),publishingRef=useRef(false);
   const [mapId, setMapId] = useState(initialId); const [graph, setGraph] = useState(null); const [selection, setSelection] = useState({ nodes: [], edges: [] }); const [search, setSearch] = useState(''); const [revealed, setRevealed] = useState(new Set()); const [connectKind, setConnectKind] = useState('hierarchy'); const [status, setStatus] = useState('Loading…'); const [error, setError] = useState(''); const [settings, setSettings] = useState({ minimap: true, grid: true, snap: false, default_node_type: 'idea' }); const [settingsOpen, setSettingsOpen] = useState(root.dataset.openSettings === 'true'); const [context, setContext] = useState(null); const [flow, setFlow] = useState(null);
   useEffect(()=>{if(!mapId||mapId==='new')return;try{const key='dashboard.workspace.last.v1.'+document.body.dataset.owner,last=JSON.parse(localStorage.getItem(key)||'{}');last['/tools/mindmaps']=mapId;localStorage.setItem(key,JSON.stringify(last));}catch(_){}},[mapId]);
   useEffect(()=>{if(mapId&&mapId!=='new')window.recordLauncherVisit?.('mind-maps',mapId);},[mapId]);
@@ -150,6 +150,7 @@ function Editor() {
   useEffect(()=>{
     if(!graph || !loaded.current || !draftHost.current)return;
     const recovery=window.WidgetDeckDrafts?.create({id:'mind-map',resource:String(mapId),host:draftHost.current,title:'Recover map edits',
+      canRestore:()=>!savingRef.current && !publishingRef.current,
       base:()=>savedFingerprint.current,read:()=>graphRef.current,
       dirty:()=>fingerprint(graphRef.current)!==(mapId==='new'?initialDraftFingerprint.current:savedFingerprint.current),
       validate:value=>typeof value?.name==='string' && Array.isArray(value.nodes) && value.nodes.every(node=>node && typeof node.id==='string' && typeof node.title==='string' && Number.isFinite(node.x) && Number.isFinite(node.y)) && Array.isArray(value.edges) && value.edges.every(edge=>edge && typeof edge.id==='string' && typeof edge.source_id==='string' && typeof edge.target_id==='string'),
@@ -160,7 +161,7 @@ function Editor() {
   },[mapId,Boolean(graph)]);
   useEffect(()=>{if(graph && loaded.current)recoveryRef.current?.changed();},[graphVersion,mapId]);
   useEffect(()=>{const warn=e=>{if(loaded.current&&(savingRef.current||fingerprint(graphRef.current)!==savedFingerprint.current)){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[]);
-  const publish=async()=>{if(publishing)return;setPublishing(true);try{const snapshot=graphRef.current;const {map}=await api('/maps',{method:'POST',body:JSON.stringify(snapshot)});savedFingerprint.current=fingerprint(snapshot);initialDraftFingerprint.current=savedFingerprint.current;if(fingerprint(graphRef.current)===savedFingerprint.current)recoveryRef.current?.clear();else{if(recoveryRef.current)retiredRecovery.current.push(recoveryRef.current);recoveryRef.current?.capture();}recoveryHoldRef.current=false;setRecoveryHold(false);setMapId(map.id);window.history.replaceState(null,'','/tools/mindmaps/'+map.id);setStatus('Saved');}catch(e){setError(e.message);}finally{setPublishing(false);}};
+  const publish=async()=>{if(publishingRef.current)return;publishingRef.current=true;setPublishing(true);try{const snapshot=graphRef.current;const {map}=await api('/maps',{method:'POST',body:JSON.stringify(snapshot)});savedFingerprint.current=fingerprint(snapshot);initialDraftFingerprint.current=savedFingerprint.current;if(fingerprint(graphRef.current)===savedFingerprint.current)recoveryRef.current?.clear();else{if(recoveryRef.current)retiredRecovery.current.push(recoveryRef.current);recoveryRef.current?.capture();}recoveryHoldRef.current=false;setRecoveryHold(false);setMapId(map.id);window.history.replaceState(null,'','/tools/mindmaps/'+map.id);setStatus('Saved');}catch(e){setError(e.message);}finally{publishingRef.current=false;setPublishing(false);}};
   const record = useCallback((before, after) => { history.current.past.push(before); if (history.current.past.length > 100) history.current.past.shift(); history.current.future = []; setGraph(after); }, []);
   const mutate = useCallback((fn) => { const before = structuredClone(graphRef.current); const after = fn(structuredClone(before)); record(before, after); }, [record]);
   const updateNode = (id, changes) => mutate((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === id ? { ...node, ...changes } : node) }));
