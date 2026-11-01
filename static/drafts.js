@@ -4,6 +4,7 @@
   const owner = document.body.dataset.owner;
   if (!owner) return;
   const prefix = `widgetdeck.draft.v1.${owner}.`, ttl = 7 * 86400000;
+  const receiptPrefix = `widgetdeck.draft.receipt.${owner}.`;
   const maxRecord = 512 * 1024, maxTotal = 2 * 1024 * 1024, maxRecords = 20;
   const controllers = new Set(), cleanup = new Set();
   let active = true;
@@ -79,15 +80,64 @@
       if (!active || document.body.dataset.accountMismatch) return;
       refresh(); if (!candidate || recover.disabled) return;
       if (dirty() && !confirm('Replace the current unsaved edits with this recovery draft?')) return;
-      restoredKey = candidate.key; restore(JSON.parse(JSON.stringify(candidate.value))); capture();
-      notice('Draft restored. Review it, then save explicitly to your account.');
+      try {
+        restoredKey = candidate.key; restore(JSON.parse(JSON.stringify(candidate.value))); capture();
+        notice('Draft restored. Review it, then save explicitly to your account.');
+      } catch (_) { copy.value=JSON.stringify(candidate.value,null,2);copy.hidden=false;notice('Could not apply this draft to the current form. Its recovery copy is retained for comparison.'); }
     });
     discard.addEventListener('click', () => {
       if (!active || !candidate || !confirm('Discard this recovery copy? Current editor values will stay unchanged.')) return;
       try { localStorage.removeItem(candidate.key); refresh(); } catch (_) { notice('Could not discard the recovery copy.'); }
     });
-    const controller = {capture, clear, refresh, changed() {clearTimeout(timer); timer = setTimeout(capture,250);}, dispose({preserve = true} = {}) {if(preserve)capture(); disposed = true; clearTimeout(timer); controllers.delete(controller); panel.remove();}};
+    function receipt() {
+      const keys=Array.from({length:sessionStorage.length},(_,i)=>sessionStorage.key(i)).filter(existing=>existing?.startsWith(receiptPrefix));
+      keys.forEach(existing=>{try{if(JSON.parse(sessionStorage.getItem(existing)).createdAt<Date.now()-86400000)sessionStorage.removeItem(existing);}catch(_){}});
+      if(keys.filter(existing=>sessionStorage.getItem(existing)!==null).length>=20)throw new Error('Too many pending form receipts.');
+      const nonce=crypto.randomUUID();
+      sessionStorage.setItem(receiptPrefix+nonce,JSON.stringify({resource:identity,keys:[key,restoredKey].filter(Boolean),createdAt:Date.now()}));
+      return nonce;
+    }
+    function acknowledge() {
+      const url=new URL(location.href),nonce=url.searchParams.get('_draft_ack');
+      if(!nonce)return;
+      try {
+        const record=JSON.parse(sessionStorage.getItem(receiptPrefix+nonce));
+        if(record?.resource!==identity || record.createdAt<Date.now()-86400000 || !Array.isArray(record.keys) || !record.keys.every(existing=>existing.startsWith(prefix+encodeURIComponent(identity)+'.')))return;
+        record.keys.forEach(existing=>localStorage.removeItem(existing));sessionStorage.removeItem(receiptPrefix+nonce);
+        url.searchParams.delete('_draft_ack');history.replaceState(history.state,'',url);
+      } catch (_) { /* An absent/broken receipt must not discard a draft. */ }
+    }
+    const controller = {capture, clear, refresh, receipt, changed() {clearTimeout(timer); timer = setTimeout(capture,250);}, dispose({preserve = true} = {}) {if(preserve)capture(); disposed = true; clearTimeout(timer); controllers.delete(controller); panel.remove();}};
+    acknowledge();
     controllers.add(controller); refresh(); return controller;
+  }
+  function bindForm(form,{prepareRestore}={}) {
+    const controls=()=>[...form.elements].filter(field=>field.name && field.matches('input:not([type=hidden],[type=password],[type=file],[type=submit],[type=button]),textarea,select') && !field.closest('.draft-recovery'));
+    const read=()=>controls().map(field=>({name:field.name,value:field.value,checked:field.matches('[type=checkbox],[type=radio]')?field.checked:null}));
+    const baseline=read();
+    const controller=create({id:'native-form',resource:new URL(form.action).pathname+':'+form.dataset.draftForm,host:form,base:()=>baseline,read,
+      dirty:()=>!same(read(),baseline),
+      validate:value=>Array.isArray(value) && value.length<=200 && value.every(field=>typeof field?.name==='string' && field.name.length<=80 && typeof field.value==='string' && field.value.length<=100000 && (field.checked===null || typeof field.checked==='boolean')),
+      restore:value=>{
+        prepareRestore?.(value);
+        const fields=controls();
+        if(fields.length!==value.length || fields.some((field,index)=>field.name!==value[index].name))throw new Error('The form fields changed.');
+        fields.forEach((field,index)=>{field.value=value[index].value;if(value[index].checked!==null)field.checked=value[index].checked;});
+        fields.forEach(field=>field.dispatchEvent(new Event('input',{bubbles:true})));
+      }
+    });
+    form.addEventListener('input',event=>{if(!event.target.closest('.draft-recovery'))controller.changed();});
+    form.addEventListener('change',event=>{if(!event.target.closest('.draft-recovery'))controller.changed();});
+    form.addEventListener('click',event=>{if(event.target.closest('button')&&!event.target.closest('.draft-recovery'))controller.changed();});
+    form.addEventListener('submit',()=>{
+      controller.capture();
+      try {
+        let token=form.querySelector('input[name=_draft_token]');
+        if(!token){token=document.createElement('input');token.type='hidden';token.name='_draft_token';form.append(token);}
+        token.value=controller.receipt();
+      }catch(_){ /* A failed receipt retains the draft even if the native save succeeds. */ }
+    });
+    return controller;
   }
   function preserve() { controllers.forEach(controller => controller.capture()); }
   document.addEventListener('visibilitychange', () => { if (document.hidden) preserve(); });
@@ -100,6 +150,8 @@
     active = false;
     try { ownedKeys().forEach(key => localStorage.removeItem(key)); cleanup.forEach(callback=>{try{callback();}catch(_){}}); }
     catch (_) { /* Do not block signing out if storage was disabled. */ }
+    try { Array.from({length:sessionStorage.length},(_,i)=>sessionStorage.key(i)).filter(key=>key?.startsWith(receiptPrefix)).forEach(key=>sessionStorage.removeItem(key)); }catch(_){}
   });
-  window.WidgetDeckDrafts = {create, onLogout(callback) {cleanup.add(callback); return ()=>cleanup.delete(callback);}, limits:{ttl,maxRecord,maxTotal,maxRecords}};
+  window.WidgetDeckDrafts = {create, bindForm, onLogout(callback) {cleanup.add(callback); return ()=>cleanup.delete(callback);}, limits:{ttl,maxRecord,maxTotal,maxRecords}};
+  document.querySelectorAll('form[data-draft-form]:not([data-draft-custom])').forEach(form=>bindForm(form));
 })();

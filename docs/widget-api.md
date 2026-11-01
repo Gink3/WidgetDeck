@@ -93,6 +93,20 @@ can register cleanup for an existing owner-scoped draft format. Explicit logout
 clears recovery drafts for that account; expiry retains them for reauthentication.
 Persistent user libraries are separate and must survive logout.
 
+Native POST forms can opt in with `data-draft-form="stable-form-name"`.
+Text/select/checkbox values are captured; hidden credentials and selected files
+are excluded. After persisting successfully, their route returns
+`native_draft_redirect(endpoint, **values)` from
+`dashboard.campaign_tools.common_routes`. It preserves the legacy redirect when
+no receipt token is supplied. Receipt metadata contains only draft keys, expires
+after a day, is bounded to 20 pending forms, and is not a mutation queue. A failed
+submission or login redirect cannot acknowledge/delete a recovery copy.
+
+Dynamic builders also set `data-draft-custom` and call
+`WidgetDeckDrafts.bindForm(form, {prepareRestore(value)})` after their controls are
+initialized. Recreate the correct control shape before the adapter assigns values;
+unsupported shapes retain a comparison copy instead of silently dropping fields.
+
 Core API version is independent of Dashboard and widget package versions. Source
 selection, version locks and dependency ordering precede execution. The framework
 preserves the legacy database helpers through `dashboard.four_ad.models` while
