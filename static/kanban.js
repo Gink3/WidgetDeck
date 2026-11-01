@@ -38,6 +38,7 @@
   if ([...effortFilter.options].some(o => o.value === initialEffort)) effortFilter.value = initialEffort;
   const filtering = () => Boolean(search.value.trim() || effortFilter.value);
   let commentSaving = false;
+  let itemRecovery, commentRecovery;
   let selected = null, dirty = false, saving = false, moving = false, requestNumber = 0, dragged = null, ignoreClickUntil = 0;
   const date = (value) => new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   const announce = (message, error = false) => { $('#kanban-status').textContent = message; $('#kanban-status').classList.toggle('error', error); };
@@ -120,6 +121,8 @@
     });
   }
   function fillDetail(item) {
+    const keepCommentRecovery = selected?.id === item.id && commentRecovery;
+    itemRecovery?.dispose(); if (!keepCommentRecovery) commentRecovery?.dispose();
     window.recordLauncherVisit?.('kanban',item.id,'item');
     selected = item; dirty = false;
     title.value = item.title; notes.value = item.notes; column.value = item.column_id;
@@ -133,6 +136,18 @@
     transferForm.hidden = false;
     $('#item-actions').hidden = false; $('#cancel-item').textContent = item.cancelled_at ? 'Restore item' : 'Cancel item';
     renderHistory(item); renderComments(item); renderLinks(item); renderEfforts(item);
+    itemRecovery = window.WidgetDeckDrafts?.create({
+      id:'kanban-item', resource:String(item.id), host:form, title:'Recover item edits',
+      base:()=>({revision:item.revision}), dirty:()=>dirty,
+      read:()=>({title:title.value,notes:notes.value,column_id:column.value}),
+      validate:value=>typeof value?.title==='string' && typeof value.notes==='string' && typeof value.column_id==='string',
+      restore:value=>{title.value=value.title;notes.value=value.notes;column.value=value.column_id;form.dispatchEvent(new Event('input',{bubbles:true}));}
+    });
+    if (!keepCommentRecovery) commentRecovery = window.WidgetDeckDrafts?.create({
+      id:'kanban-comment', resource:String(item.id), host:$('#item-comment-form'), title:'Recover comment draft',
+      base:()=>null, dirty:()=>Boolean($('#comment-body').value.trim()), read:()=>$('#comment-body').value,
+      validate:value=>typeof value==='string' && value.length<=5000, restore:value=>{$('#comment-body').value=value;}
+    });
   }
   function renderLinks(item) {
     $('#item-links-section').hidden = false;
@@ -200,11 +215,12 @@
     $('#add-comment').disabled = true; commentSaving = true;
     try {
       const item = await api(id, {method:'POST', body:JSON.stringify({body:text})}, '/comments');
-      if (selected?.id === id) { selected.comments = item.comments; renderComments(item); $('#comment-body').value = ''; detailStatus('Comment added.'); }
+      if (selected?.id === id) { selected.comments = item.comments; renderComments(item); $('#comment-body').value = ''; commentRecovery?.clear(); detailStatus('Comment added.'); }
     } catch(error) { detailStatus(error.message, true); }
     finally { $('#add-comment').disabled = false; commentSaving = false; }
   });
   function canLeave() {
+    itemRecovery?.capture(); commentRecovery?.capture();
     if (saving || moving || commentSaving) { detailStatus('Please wait for the current change to finish saving.'); return false; }
     return (!dirty && !$('#comment-body').value.trim()) || window.confirm('Discard the unsaved changes to this item?');
   }
@@ -282,13 +298,16 @@
     $('#detail-heading').textContent = title.value || 'Untitled item';
     dirty = title.value !== selected.title || notes.value !== selected.notes || Number(column.value) !== selected.column_id;
     $('#item-save-state').textContent = dirty ? 'Unsaved changes' : 'All changes saved'; $('#save-item').disabled = !dirty;
+    itemRecovery?.changed();
   });
+  $('#comment-body').addEventListener('input',()=>commentRecovery?.changed());
   form.addEventListener('submit', async (event) => {
     event.preventDefault(); if (!selected || saving || moving || !dirty) return;
     saving = true; detailStatus('Saving…');
     [title, notes, column, $('#save-item')].forEach((el) => { el.disabled = true; }); updateCounts();
     try {
       const item = await api(selected.id, { method: 'PATCH', body: JSON.stringify({ title: title.value, notes: notes.value, column_id: Number(column.value), revision: selected.revision }) });
+      dirty = false; itemRecovery?.clear();
       updateCard(item); fillDetail(item); detailStatus('Changes saved.'); announce(`Saved “${item.title}”.`);
     } catch (error) { detailStatus(error.message, true); }
     finally { saving = false; [title, notes, column].forEach((el) => { el.disabled = false; }); $('#save-item').disabled = !dirty; updateCounts(); }

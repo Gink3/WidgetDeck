@@ -58,6 +58,32 @@ class KanbanBrowserTests(unittest.TestCase):
         self.page.get_by_label('Destination board', exact=True).select_option(str(self.boards[1]['id']))
         self.page.wait_for_function("!document.querySelector('#transfer-column').disabled")
 
+    def test_card_and_comment_recovery_survives_reload_and_clears_only_on_ack(self):
+        from playwright.sync_api import expect
+        page=self.page
+        page.locator('#item-notes').fill('Interrupted card notes')
+        page.locator('#item-comments-section>summary').click()
+        page.locator('#comment-body').fill('Interrupted comment')
+        page.evaluate("dispatchEvent(new Event('pagehide'))")
+        page.once('dialog',lambda dialog:dialog.accept())
+        page.reload()
+        expect(page.locator('#item-notes')).to_have_value('Original notes')
+        card=page.locator('[data-draft-group=kanban-item]')
+        card.locator(':scope>summary').click();card.get_by_role('button',name='Restore draft',exact=True).click()
+        expect(page.locator('#item-notes')).to_have_value('Interrupted card notes')
+        page.locator('#item-comments-section>summary').click()
+        comment=page.locator('[data-draft-group=kanban-comment]')
+        comment.locator(':scope>summary').click();comment.get_by_role('button',name='Restore draft',exact=True).click()
+        expect(page.locator('#comment-body')).to_have_value('Interrupted comment')
+        page.get_by_role('button',name='Save changes',exact=True).click()
+        expect(page.locator('#detail-status')).to_have_text('Changes saved.')
+        expect(page.locator('#comment-body')).to_have_value('Interrupted comment')
+        page.get_by_role('button',name='Add comment',exact=True).click()
+        expect(page.locator('#comment-body')).to_have_value('')
+        saved=self.http.get(self.base+f"/api/tools/kanban/items/{self.item['id']}").json()['item']
+        self.assertEqual(saved['notes'],'Interrupted card notes');self.assertEqual([c['body'] for c in saved['comments']],['Interrupted comment'])
+        self.assertEqual(page.evaluate("Object.keys(localStorage).filter(k=>k.startsWith('widgetdeck.draft.v1.')).length"),0)
+
     def test_transfer_through_panel_persists_identity_and_history(self):
         self.destination()
         self.page.get_by_role('button', name='Move item', exact=True).click()
@@ -203,7 +229,7 @@ class KanbanBrowserTests(unittest.TestCase):
           width: document.querySelector('.kanban-detail').getBoundingClientRect().width})''')
         self.assertLessEqual(mobile['page'], mobile['viewport']+1)
         self.assertLessEqual(mobile['width'], mobile['viewport'])
-        comments.locator('summary').focus()
+        comments.locator(':scope > summary').focus()
         self.page.keyboard.press('Enter')
         self.assertTrue(comments.evaluate('(el) => el.open'))
         marker='<img src=x onerror="window.__commentAudit=1">'
