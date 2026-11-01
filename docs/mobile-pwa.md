@@ -99,3 +99,14 @@ Resume signals do not themselves reload pages or replay writes. Browser network
 hints are advisory: an actual successful response clears the connection warning.
 Persistent-session cookies are not refreshed on unmodified read responses, so
 parallel foreground reads cannot replace newer CSRF state with an older cookie.
+
+### Transient API actions
+
+API computations that use POST without saving user content can pass the optional
+local fetch hint `widgetdeckOperation: 'transient'`. For example, OCR extraction
+returns editable text that has not yet been captured or saved. This suppresses
+the shared Saving/Saved message for that request while preserving connection and
+session checks, the native Response/error, and unresolved save failures. It does
+not change the API, transmit a header, authorize work, or replay requests. Older
+shells without this observer simply ignore the extra fetch option. Widgets still
+provide their own action-specific progress, result and error messages.

@@ -63,7 +63,10 @@
     const observed = url.origin === location.origin && url.pathname.includes('/api/') && !credential;
     if (!observed) return nativeFetch(input, options);
     const method = String(options?.method || input.method || 'GET').toUpperCase();
-    const mutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && url.pathname !== '/api/launcher/recent';
+    // Computations/uploads may use POST without persisting user content. The
+    // optional local hint affects feedback only; auth and connection are observed.
+    const mutation = options?.widgetdeckOperation !== 'transient' &&
+      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && url.pathname !== '/api/launcher/recent';
     const key = method + ' ' + url.pathname + url.search;
     if (mutation) {
       if (!state.saving) state.accepted = false;

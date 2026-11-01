@@ -109,6 +109,36 @@ class RuntimeBrowserTests(unittest.TestCase):
         finally:
             self.latch.set()
 
+    def test_transient_requests_do_not_claim_saved_but_still_check_sessions(self):
+        from playwright.sync_api import sync_playwright, expect
+        self.probe_status['transient-write'] = 409
+        try:
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch()
+                context = self.context(browser)
+                page = context.new_page()
+                page.goto(self.base + '/')
+                page.wait_for_function('window.WidgetDeckRuntime?.state.reachable === true')
+                def compute():
+                    return page.evaluate("fetch('/api/pwa-test/transient', {method:'POST', widgetdeckOperation:'transient'}).then(async r=>({status:r.status,body:await r.json()}))")
+                result = compute()
+                self.assertEqual(result, {'status':200, 'body':{'case':'transient'}})
+                expect(page.locator('#pwa-save-feedback')).to_be_hidden()
+                page.evaluate("fetch('/api/pwa-test/transient-write', {method:'POST'}).then(r=>r.json())")
+                expect(page.locator('#pwa-save-feedback')).to_have_attribute('data-state', 'failed')
+                self.probe_status['transient'] = 503
+                self.assertEqual(compute()['status'], 503)
+                expect(page.locator('#pwa-save-feedback')).to_have_attribute('data-state', 'failed')
+                self.probe_status['transient'] = 401
+                self.assertEqual(compute()['status'], 401)
+                expect(page.locator('#pwa-session-status')).to_contain_text('Your session expired')
+                self.assertTrue(page.evaluate('window.WidgetDeckRuntime.state.reachable'))
+                context.close()
+                browser.close()
+        finally:
+            self.probe_status.pop('transient', None)
+            self.probe_status.pop('transient-write', None)
+
     def test_expiry_recovery_and_account_change_keep_edits_private(self):
         from playwright.sync_api import sync_playwright, expect
         with sync_playwright() as pw:
