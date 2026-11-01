@@ -11,9 +11,9 @@
 <section id="wordle-grid" aria-label="Guesses"></section>
 <form id="wordle-guess-form" hidden><input id="wordle-guess" type="hidden" disabled><button id="wordle-submit" disabled>Submit guess</button></form>
 <div id="wordle-keyboard" aria-label="Letter keyboard"></div>
-<p class="wordle-legend"><span class="correct">Correct position</span><span class="present">Present elsewhere</span><span class="absent">Not matched</span></p>
+
 </section>
-<section class="panel"><h2>Hard mode</h2><p class="hint">Hard mode keeps green letters in place and reuses yellow letters in a new position, including revealed duplicates. Restarting after a guess counts as a loss.</p><h2>Your statistics</h2><dl id="wordle-stats"></dl><h3>Winning guess distribution</h3><ol id="wordle-distribution"></ol><p class="hint">Statistics and active games are saved privately to your account.</p></section>
+<details class="panel wordle-information"><summary>Statistics and rules</summary><p class="wordle-legend"><span class="correct">Correct position</span><span class="present">Present elsewhere</span><span class="absent">Not matched</span></p><h2>Hard mode</h2><p class="hint">Hard mode keeps green letters in place and reuses yellow letters in a new position, including revealed duplicates. Restarting after a guess counts as a loss.</p><h2>Your statistics</h2><dl id="wordle-stats"></dl><h3>Winning guess distribution</h3><ol id="wordle-distribution"></ol><p class="hint">Statistics and active games are saved privately to your account.</p></details>
 <p class="hint">Five-letter guesses use <a href="https://github.com/tabatkins/wordle-list" target="_blank" rel="noopener noreferrer">Tab Atkins Jr.’s MIT-licensed Wordle list</a>. Six- and seven-letter guesses use the <a href="https://github.com/wordnik/wordlist" target="_blank" rel="noopener noreferrer">MIT-licensed Wordnik Wordlist</a>. Answers use curated common-word subsets.</p></main>
 <script src="{{ url_for('static',filename='wordle.js') }}" defer></script>
 {% endblock %}

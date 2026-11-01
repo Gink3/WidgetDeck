@@ -37,3 +37,36 @@
 @media(max-width:700px) {
   .wordle-row { grid-template-columns:repeat(var(--word-length,5),minmax(0,min(42px,calc((100vw - 72px) / 7)))); }
 }
+
+/* Read-only tiles can shrink on short phones; keyboard actions keep 44px height. */
+@media(max-width:720px) {
+  .dashboard.wordle-page { margin-top:4px; }
+  .wordle-controls { margin:4px 0; gap:8px; }
+  #wordle-status { margin:4px 0; }
+  #wordle-grid {
+    --tile-size:min(44px,calc((100vw - 64px) / var(--word-length,5)),max(20px,calc((var(--mobile-viewport-height,100dvh) - 350px) / 6)));
+    gap:4px; margin:6px auto;
+  }
+  .wordle-row { grid-template-columns:repeat(var(--word-length,5),var(--tile-size)); gap:4px; }
+  .wordle-tile { font-size:clamp(14px,3.5dvh,26px); line-height:1; }
+  #wordle-keyboard { margin:4px auto; }
+  .wordle-key-row { margin:3px 0; gap:3px; }
+  .wordle-page .wordle-key-row button { min-height:44px; padding:6px 0; }
+  .wordle-page > .panel { margin-top:12px; }
+}
+@media(max-height:500px) and (min-width:600px) {
+  .dashboard.wordle-page { margin-top:4px; }
+  .wordle-controls { margin:4px 0; }
+  #wordle-play { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:0 16px; max-width:900px; }
+  #wordle-status { grid-column:1 / -1; margin:4px 0; }
+  #wordle-grid {
+    --tile-size:min(36px,max(20px,calc((var(--mobile-viewport-height,100dvh) - 210px) / 6)));
+    grid-column:1; grid-row:2; gap:3px; margin:6px auto;
+  }
+  .wordle-row { grid-template-columns:repeat(var(--word-length,5),var(--tile-size)); gap:3px; }
+  .wordle-tile { font-size:20px; line-height:1; }
+  #wordle-keyboard { grid-column:2; grid-row:2; align-self:center; margin:4px auto; }
+  .wordle-page .wordle-key-row button { min-height:44px; padding:6px 0; }
+  .wordle-key-row { margin:3px 0; }
+}
+.wordle-information > summary { min-height:44px; display:flex; align-items:center; }
