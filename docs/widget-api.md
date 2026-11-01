@@ -101,6 +101,8 @@ are excluded. After persisting successfully, their route returns
 no receipt token is supplied. Receipt metadata contains only draft keys, expires
 after a day, is bounded to 20 pending forms, and is not a mutation queue. A failed
 submission or login redirect cannot acknowledge/delete a recovery copy.
+Acknowledgment matches the captured draft version; edits made while a native
+submission is pending remain recoverable after the older response arrives.
 
 Dynamic builders also set `data-draft-custom` and call
 `WidgetDeckDrafts.bindForm(form, {prepareRestore(value)})` after their controls are

@@ -3,6 +3,7 @@ import logging
 import tempfile
 import threading
 import unittest
+from urllib.parse import urlencode
 from werkzeug.serving import make_server
 from test_security_boundaries import isolated_application
 
@@ -21,8 +22,8 @@ class DraftRecoveryBrowserTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.shutdown(); cls.server.server_close(); cls.directory.cleanup()
 
-    def editor(self,page,owner='A',revision=1):
-        page.goto(self.base+'/login')
+    def editor(self,page,owner='A',revision=1,ack=None):
+        page.goto(self.base+'/login'+('?'+urlencode({'_draft_ack':ack}) if ack else ''))
         page.set_content('<body data-owner="'+owner+'"><main><label>Draft<textarea id="text"></textarea></label></main><form class="logout" onsubmit="event.preventDefault()"><button>Sign out</button></form></body>')
         page.add_script_tag(url=self.base+'/static/drafts.js')
         page.evaluate('''revision=>{
@@ -109,4 +110,20 @@ class DraftRecoveryBrowserTests(unittest.TestCase):
               recovery=WidgetDeckDrafts.create({id:'fixture',resource:'two',host:document.querySelector('main'),read:()=>({text:document.querySelector('#text').value}),base:()=>null,restore:()=>{},dirty:()=>true});recovery.capture();}''')
             expect(page.locator('.draft-recovery')).to_contain_text('Draft recovery storage is full')
             self.assertEqual(page.evaluate('Object.fromEntries(Object.entries(localStorage))'),before)
+            browser.close()
+
+    def test_native_ack_keeps_edits_made_after_the_submitted_snapshot(self):
+        from playwright.sync_api import sync_playwright,expect
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();page=browser.new_page();self.editor(page)
+            page.locator('#text').fill('Submitted snapshot');page.evaluate('recovery.capture()')
+            nonce=page.evaluate('recovery.receipt()')
+            page.locator('#text').fill('Newer edit while the form was submitting');page.evaluate('recovery.capture()')
+            self.editor(page,ack=nonce)
+            page.locator('.draft-recovery>summary').click();page.get_by_role('button',name='Restore draft',exact=True).click()
+            expect(page.locator('#text')).to_have_value('Newer edit while the form was submitting')
+            nonce=page.evaluate('recovery.receipt()')
+            self.editor(page,ack=nonce)
+            expect(page.locator('.draft-recovery')).to_be_hidden()
+            self.assertEqual(page.evaluate("Object.keys(localStorage).filter(k=>k.startsWith('widgetdeck.draft.v1.')).length"),0)
             browser.close()

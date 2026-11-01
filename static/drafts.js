@@ -62,7 +62,7 @@
           catch (_) { throw new Error('This recovery copy is damaged. Its original bytes have been retained.'); }
           if (previous.savedAt > Date.now()-ttl && same(previous.value,value) && same(previous.base,currentBase)) return;
         }
-        const raw = JSON.stringify({owner, resource:identity, base:currentBase, value, savedAt:Date.now()});
+        const raw = JSON.stringify({owner, resource:identity, base:currentBase, value, savedAt:Date.now(),version:crypto.randomUUID()});
         if (raw.length * 2 > maxRecord) throw new Error('This draft exceeds the recovery limit. Save it to your account or copy it before leaving.');
         records(); // Prune only expired valid records; retain malformed bytes.
         const others = ownedKeys().filter(existing => existing !== key);
@@ -94,7 +94,9 @@
       keys.forEach(existing=>{try{if(JSON.parse(sessionStorage.getItem(existing)).createdAt<Date.now()-86400000)sessionStorage.removeItem(existing);}catch(_){}});
       if(keys.filter(existing=>sessionStorage.getItem(existing)!==null).length>=20)throw new Error('Too many pending form receipts.');
       const nonce=crypto.randomUUID();
-      sessionStorage.setItem(receiptPrefix+nonce,JSON.stringify({resource:identity,keys:[key,restoredKey].filter(Boolean),createdAt:Date.now()}));
+      const draftKeys=[key,restoredKey].filter(Boolean);
+      const versions=Object.fromEntries(draftKeys.map(existing=>[existing,JSON.parse(localStorage.getItem(existing))?.version??null]));
+      sessionStorage.setItem(receiptPrefix+nonce,JSON.stringify({resource:identity,keys:draftKeys,versions,createdAt:Date.now()}));
       return nonce;
     }
     function acknowledge() {
@@ -103,7 +105,7 @@
       try {
         const record=JSON.parse(sessionStorage.getItem(receiptPrefix+nonce));
         if(record?.resource!==identity || record.createdAt<Date.now()-86400000 || !Array.isArray(record.keys) || !record.keys.every(existing=>existing.startsWith(prefix+encodeURIComponent(identity)+'.')))return;
-        record.keys.forEach(existing=>localStorage.removeItem(existing));sessionStorage.removeItem(receiptPrefix+nonce);
+        record.keys.forEach(existing=>{const current=JSON.parse(localStorage.getItem(existing));if((current?.version??null)===(record.versions?.[existing]??null))localStorage.removeItem(existing);});sessionStorage.removeItem(receiptPrefix+nonce);
         url.searchParams.delete('_draft_ack');history.replaceState(history.state,'',url);
       } catch (_) { /* An absent/broken receipt must not discard a draft. */ }
     }
