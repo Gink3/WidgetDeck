@@ -45,3 +45,18 @@ absolute expiry (null for legacy sessions), with `private, no-store`. It returns
 401 after expiry or logout; it is not an integration-key endpoint. Sign-in
 preserves local deep links, including after incorrect credentials. Draft recovery
 and foreground refresh build on this endpoint without replaying failed writes.
+
+## Offline privacy
+
+The root service worker stores only the generic offline page and two public,
+versioned app icons. It never stores authenticated pages, API results, documents,
+editor scripts, drafts or mutation requests in Cache Storage. Offline navigation
+shows a generic retry screen; an offline save fails instead of being queued.
+The online app displays connection-loss feedback. This does not add offline
+editing or synchronization. Application-specific draft recovery uses a separate,
+account-isolated mechanism and must not expose drafts on the offline screen.
+
+Because executable assets are not service-worker cached, the offline fallback
+cannot run stale application/editor code. A failed service-worker registration
+does not prevent normal online use. Network/Cache Storage tests exercise actual
+Chromium service-worker behavior; iPhone standalone checks remain separate.

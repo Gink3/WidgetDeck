@@ -35,7 +35,8 @@ init_pwa(app)
 @app.before_request
 def require_account():
     """All dashboard tools are private; only the account screens remain public."""
-    if request.endpoint in {"static", "login", "login_submit", "register", "register_submit", "pwa_install"}:
+    if request.endpoint in {"static", "login", "login_submit", "register", "register_submit", "pwa_install",
+                            "pwa_offline", "pwa_service_worker"}:
         return None
     if current_user():
         return None
