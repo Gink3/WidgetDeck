@@ -1,5 +1,12 @@
 # Private mobile access
 
+Open `/install` for iPhone Home Screen installation instructions. The manifest
+uses `/` as its stable identity, scope and launch URL and requests standalone
+display. Launching without a valid account session goes to sign-in; protected
+deep links retain their destination. Installation help and icon/manifest assets
+are public and contain no account data. Verify installation on the target iPhone;
+browser emulation cannot prove Home Screen installation or OS lifecycle behavior.
+
 WidgetDeck uses the same account protection in a browser and an installed Home
 Screen app. Serve production through trusted HTTPS and set
 `DASHBOARD_SESSION_COOKIE_SECURE=1` and a persistent `DASHBOARD_SECRET_KEY` in the

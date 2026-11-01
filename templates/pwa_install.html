@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Install on iPhone · WidgetDeck{% endblock %}
+{% block body %}
+<main class="dashboard"><section class="panel" style="max-width:40rem">
+  <h1>WidgetDeck on your iPhone</h1>
+  <ol>
+    <li>Open this workspace in Safari over HTTPS.</li>
+    <li>Open the Share menu and choose <strong>Add to Home Screen</strong>.</li>
+    <li>If offered, leave <strong>Open as Web App</strong> enabled, then tap <strong>Add</strong>.</li>
+    <li>Open WidgetDeck from your Home Screen and sign in. On your personal phone,
+      choose <strong>Keep me signed in</strong> if you want to stay signed in after closing it.</li>
+  </ol>
+  <p>Your account is still required to access your tools. Connect to the internet
+    to load and save your work.</p>
+  <a class="primary" href="{{ url_for('home') }}">Open WidgetDeck</a>
+</section></main>
+{% endblock %}

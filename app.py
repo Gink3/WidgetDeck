@@ -29,11 +29,13 @@ app.config.update(
 from dashboard.http_security import configure_cookies, configure_headers
 configure_cookies(app)
 configure_headers(app)
+from dashboard.pwa import init_pwa
+init_pwa(app)
 
 @app.before_request
 def require_account():
     """All dashboard tools are private; only the account screens remain public."""
-    if request.endpoint in {"static", "login", "login_submit", "register", "register_submit"}:
+    if request.endpoint in {"static", "login", "login_submit", "register", "register_submit", "pwa_install"}:
         return None
     if current_user():
         return None

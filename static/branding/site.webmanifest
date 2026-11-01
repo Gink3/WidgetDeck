@@ -1,6 +1,11 @@
 {
   "name": "WidgetDeck",
   "short_name": "WidgetDeck",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "description": "Your private tools and saved work.",
   "icons": [
     {
       "src": "dashboard-icon-192.png",
