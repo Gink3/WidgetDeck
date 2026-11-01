@@ -13,6 +13,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 def init_auth(app):
     from dashboard.database import init_database
     init_database(app)
+    app.config.setdefault('DASHBOARD_REGISTRATION_ENABLED',
+                          os.environ.get('DASHBOARD_REGISTRATION_ENABLED', 'true').lower() in {'1', 'true', 'yes'})
+    app.jinja_env.globals['registration_enabled'] = registration_enabled
     # Deployments should set DASHBOARD_SECRET_KEY so sessions survive restarts.
     # A random local fallback is safer than a publicly known signing key.
     if not app.config.get("SECRET_KEY"):
@@ -134,6 +137,10 @@ def login_required(view):
     return wrapped
 
 
+def registration_enabled():
+    return bool(current_app.config['DASHBOARD_REGISTRATION_ENABLED'])
+
+
 def register_auth_routes(app):
     @app.get("/login")
     def login():
@@ -161,10 +168,14 @@ def register_auth_routes(app):
     def register():
         if current_user():
             return redirect(url_for("home"))
+        if not registration_enabled():
+            return current_app.jinja_env.get_template('registration_closed.html').render(), 403
         return current_app.jinja_env.get_or_select_template("register.html").render()
 
     @app.post("/register")
     def register_submit():
+        if not registration_enabled():
+            return current_app.jinja_env.get_template('registration_closed.html').render(), 403
         error = _check_auth_form("register")
         if error: return error
         username = str(request.form.get("username") or "").strip()

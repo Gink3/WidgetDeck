@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Registration closed · WidgetDeck{% endblock %}
+{% block body %}
+<main class="auth-page"><section class="auth-card">
+  <h1>Registration is closed</h1>
+  <p>This workspace is private. Contact its administrator for access.</p>
+  <a href="{{ url_for('login') }}">Sign in with an existing account</a>
+</section></main>
+{% endblock %}
