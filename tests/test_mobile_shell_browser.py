@@ -128,6 +128,8 @@ class MobileShellBrowserTests(unittest.TestCase):
             expect(page).to_have_url(self.base + '/settings')
             page.set_viewport_size({'width': 1440, 'height': 900})
             expect(nav).to_be_visible()
+            expect(nav).to_have_css('display', 'flex')
+            expect(nav).to_have_css('flex-direction', 'row')
             expect(page.get_by_role('button', name='Menu', exact=True)).not_to_be_visible()
             context.close()
             context = browser.new_context(viewport={'width': 320, 'height': 720}, java_script_enabled=False)

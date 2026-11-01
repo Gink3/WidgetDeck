@@ -12,6 +12,7 @@
   background: var(--panel); border-top: 1px solid var(--accent-hi);
 }
 #main-navigation[hidden], #mobile-nav-toggle[hidden] { display: none !important; }
+body > header > #main-navigation { display:flex; min-height:64px; align-items:center; gap:4px; }
 @media (max-width: 720px) {
   .mobile-nav-ready > header { flex-wrap: nowrap; align-items: center; padding-bottom: 8px; }
   .mobile-nav-ready > header .header-identity { flex: 1; }
