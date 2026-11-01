@@ -4,11 +4,21 @@
   notice.setAttribute('role', 'status');
   notice.setAttribute('aria-live', 'polite');
   notice.hidden = true;
-  notice.textContent = 'Connection unavailable. Changes cannot be saved. Reconnect before continuing.';
+  notice.textContent = 'Your device reports no connection. Check your connection before saving.';
   document.body.append(notice);
-  function connectionChanged() { notice.hidden = navigator.onLine; }
+  function connectionChanged() {
+    const reachable = window.WidgetDeckRuntime?.state.reachable;
+    notice.hidden = reachable === true || (reachable !== false && navigator.onLine);
+    notice.textContent = reachable === false
+      ? 'The server could not be reached. Changes have not been queued. Reconnect and retry.'
+      : 'Your device reports no connection. Check your connection before saving.';
+  }
   window.addEventListener('online', connectionChanged);
-  window.addEventListener('offline', connectionChanged);
+  window.addEventListener('offline', () => {
+    if (window.WidgetDeckRuntime) window.WidgetDeckRuntime.state.reachable = null;
+    connectionChanged();
+  });
+  window.addEventListener('widgetdeck:connection', connectionChanged);
   connectionChanged();
   if ('serviceWorker' in navigator && window.isSecureContext) {
     const update = document.createElement('aside');

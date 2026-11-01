@@ -76,3 +76,26 @@ reload that tab or its editors. Closing all tabs permits the standard browser
 activation lifecycle. Activated workers remove only obsolete WidgetDeck PWA
 caches; other applications' storage is untouched. No executable code is cached
 by the worker, and offline navigation cannot resurrect old editor code.
+
+## Save and session feedback
+
+The shared runtime observes existing same-origin cookie-authenticated API fetches
+without changing their requests, response objects or errors. It shows saving,
+saved and failed states; an unrelated successful request does not clear a failed
+save. HTTP 202 is acceptance, not proof of completed persistence. Interrupted
+writes are never retried automatically. Integration-key requests are excluded.
+
+Session checks run on initial load and foreground/online transitions. After an
+expired session, the workspace is hidden while its edits remain in memory; use
+the sign-in link in another tab, then return. The same account restores the
+existing view. A different account cannot reveal that view through the shared
+runtime. Full draft recovery after OS eviction is separate work. API calls that
+need refreshed CSRF tokens must refresh their widget state before retrying.
+
+The runtime emits `widgetdeck:resume` (with `recovered`),
+`widgetdeck:session-expired`, `widgetdeck:account-changed`,
+`widgetdeck:connection` and `widgetdeck:save-state` events for widget adapters.
+Resume signals do not themselves reload pages or replay writes. Browser network
+hints are advisory: an actual successful response clears the connection warning.
+Persistent-session cookies are not refreshed on unmodified read responses, so
+parallel foreground reads cannot replace newer CSRF state with an older cookie.

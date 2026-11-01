@@ -25,6 +25,9 @@ def init_auth(app):
         raise ValueError('DASHBOARD_REMEMBER_DAYS must be between 1 and 365.')
     app.config.setdefault('DASHBOARD_REMEMBER_DAYS', remember_days)
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=remember_days)
+    # Absolute expiry needs no rolling cookie refresh. Avoid a parallel read
+    # response replacing newer CSRF state written by another widget request.
+    app.config['SESSION_REFRESH_EACH_REQUEST'] = False
     app.jinja_env.globals['remember_days'] = lambda: current_app.config['DASHBOARD_REMEMBER_DAYS']
     # Deployments should set DASHBOARD_SECRET_KEY so sessions survive restarts.
     # A random local fallback is safer than a publicly known signing key.

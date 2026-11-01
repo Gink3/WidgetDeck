@@ -31,6 +31,7 @@ class MobileSessionTests(unittest.TestCase):
         self.assertTrue(status.json['permanent'])
         self.assertAlmostEqual(status.json['expires_at'] - time.time(), 30 * 86400, delta=10)
         self.assertEqual(status.headers['Cache-Control'], 'private, no-store')
+        self.assertNotIn('Set-Cookie', status.headers)
         # Simulate cold launch with the browser cookie in a new client.
         relaunched = self.app.test_client()
         relaunched.set_cookie('dashboard_session', self.client.get_cookie('dashboard_session').value)

@@ -11,6 +11,17 @@
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   background: var(--panel); border-top: 1px solid var(--accent-hi);
 }
+#pwa-save-feedback:not([hidden]), #pwa-session-status:not([hidden]) {
+  position: sticky; bottom: 0; z-index: 101; margin: 0; padding: 12px 16px;
+  padding-bottom: max(12px,env(safe-area-inset-bottom)); background: var(--panel);
+  border-top: 1px solid var(--accent-hi);
+}
+#pwa-save-feedback[data-state=failed] { color:#ffdbe3; background:#5c303f; }
+#pwa-session-status a:not([hidden]) { display:inline-flex; align-items:center; min-height:44px; margin-left:12px; color:var(--accent-hi); }
+body[data-account-mismatch=true] > :not(#pwa-session-status):not(script):not(style) {
+  visibility:hidden !important; pointer-events:none !important;
+}
+body[data-account-mismatch=true] > #pwa-session-status { position:fixed; inset:0; padding:24px; }
 #main-navigation[hidden], #mobile-nav-toggle[hidden] { display: none !important; }
 body > header > #main-navigation { display:flex; min-height:64px; align-items:center; gap:4px; }
 @media (max-width: 720px) {
