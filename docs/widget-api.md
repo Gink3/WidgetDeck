@@ -1,4 +1,4 @@
-# Widget API version 1.4
+# Widget API version 1.5
 
 Widgets are trusted executable server code. Capabilities describe enabled core
 services; they do not sandbox Python or prevent direct access to server resources.
@@ -356,3 +356,50 @@ the recorder never commits. The home feed displays the widget's action and unit
 `added_lines` count carries the quantity when `count_unit` is not `lines` or
 `words`. Wordle records each completed game once, including a reset after guesses;
 empty abandoned games do not produce a played event.
+
+## Account-scoped browser saves (1.5)
+
+Authenticated pages load `window.WidgetDeckStorage` before widget scripts. A
+widget that requires it must declare `core_api: ">=1.5,<2"`. Create one stable
+group per widget, declaring every persistent record's legacy key, initial value,
+validator and merge kind (`map`, `list` by ID, or `single`). For example:
+
+```js
+const saves = WidgetDeckStorage.create({
+  id: 'example', title: 'Example',
+  records: [{key:'example.saves.v1', initial:[], kind:'list', validate:Array.isArray}],
+  onRecovered: () => renderLibrary()
+});
+const records = saves.read('example.saves.v1', []);
+const saved = await saves.update('example.saves.v1', items => [...items, newItem]);
+```
+
+`read` reads only the signed-in page owner's namespace. `update` runs its
+synchronous updater against the latest validated record while holding the group
+Web Lock; `write(key,value)` intentionally replaces that one record under the
+same lock. Both return a Promise<boolean>. Await success before reporting Saved;
+retain editor state on failure. Avoid read/modify/write outside `update`, which
+can overwrite another tab's entries. Optional `host` positions recovery controls
+inside a dialog; when the dialog closes, the controls remain available outside it.
+
+Unowned older records are not automatically attributed to the first account.
+The built-in recovery UI asks the user to confirm they own those saves, checks
+`/api/session`, then serializes recovery with ordinary writes. It retains exact
+original bytes and reserves ownership before account writes. A partial quota
+failure can be retried only by that owner. While recovery is pending, that
+owner can still read merged older/current records. If the backup itself could
+not be stored, edits are blocked until recovery finishes, and the original
+records remain downloadable. Current records win ID conflicts;
+original conflicting versions remain available in the owner's JSON backup.
+Recovery does not change IDs or delete original keys. The backup action rechecks
+the authenticated account. Callbacks run after releasing the lock and must retain
+unsaved editor state; they may refresh the library without reloading the page.
+
+Recovery requires Web Locks in a secure context. Without them, ordinary new saves
+still work with a page-local queue, but recovery is refused rather than risking a
+cross-tab claim. Damaged records are reported and never silently overwritten.
+Persistent account libraries survive logout. Session expiry/account-change events
+stop this page's writes until the same account recovers its session. This API is
+for saved libraries, not draft cleanup or offline synchronization. Namespaces
+prevent cross-account app reads; they do not encrypt browser-origin storage or
+create a security boundary against code with access to that browser profile.
