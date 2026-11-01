@@ -60,3 +60,19 @@ Because executable assets are not service-worker cached, the offline fallback
 cannot run stale application/editor code. A failed service-worker registration
 does not prevent normal online use. Network/Cache Storage tests exercise actual
 Chromium service-worker behavior; iPhone standalone checks remain separate.
+
+## Updates
+
+Application source, templates and core/private-widget assets contribute to a
+release fingerprint, calculated once after widget registration. Static links
+include this fingerprint, so a fresh page loads the matching asset version.
+An optional `DASHBOARD_PWA_RELEASE` identifies an immutable deployment; change it
+on every upgrade and rollback if configured.
+
+A newly installed worker waits while the current app is open. A notice asks the
+user to save work and explicitly reload, with a confirmation before activation.
+Cancellation leaves the current page intact. Activating in another tab does not
+reload that tab or its editors. Closing all tabs permits the standard browser
+activation lifecycle. Activated workers remove only obsolete WidgetDeck PWA
+caches; other applications' storage is untouched. No executable code is cached
+by the worker, and offline navigation cannot resurrect old editor code.

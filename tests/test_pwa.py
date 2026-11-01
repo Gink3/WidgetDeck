@@ -61,6 +61,16 @@ class PwaTests(unittest.TestCase):
         self.assertEqual(response.headers['Service-Worker-Allowed'], '/')
         self.assertIn('no-store', response.headers['Cache-Control'])
 
+    def test_widget_only_app_does_not_require_pwa_registration(self):
+        from test_dashboard_tools import test_app
+        with tempfile.TemporaryDirectory() as directory:
+            client = test_app(directory).test_client()
+            client.post('/tools/kanban', data={'name': 'Compatible widget fixture'})
+            response = client.get('/tools/kanban?board=1')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Compatible widget fixture', response.data)
+            self.assertNotIn(b'/static/pwa.js', response.data)
+
     def test_installed_worker_never_caches_accounts_or_replays_writes(self):
         from playwright.sync_api import sync_playwright, expect
         from werkzeug.serving import make_server
@@ -106,6 +116,56 @@ class PwaTests(unittest.TestCase):
                 context.set_offline(True)
                 page.goto(base + '/tools/kanban?board=1')
                 self.assertNotIn('SECRET', page.locator('body').inner_text())
+                context.close()
+                browser.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_updates_wait_for_explicit_reload_and_rollback_cleans_old_cache(self):
+        from playwright.sync_api import sync_playwright, expect
+        from werkzeug.serving import make_server
+        self.app.config['DASHBOARD_PWA_RELEASE'] = 'test-release-a'
+        server = make_server('127.0.0.1', 0, self.app, threaded=True)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = 'http://127.0.0.1:' + str(server.server_port)
+        try:
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch()
+                context = browser.new_context()
+                page = context.new_page()
+                page.goto(base + '/login')
+                page.wait_for_function('navigator.serviceWorker.controller !== null')
+                first = page.locator('body').get_attribute('data-release')
+                first_asset = page.locator('script[src*="pwa.js"]').get_attribute('src')
+                # Use a second tab to prove another tab's activation does not reload it.
+                other = context.new_page()
+                other.goto(base + '/login')
+                other.locator('input[name=username]').fill('keep my draft')
+                for release in ('test-release-b', 'test-release-a'):
+                    page.locator('input[name=username]').fill('unsaved example')
+                    old_release = page.locator('body').get_attribute('data-release')
+                    self.app.config['DASHBOARD_PWA_RELEASE'] = release
+                    page.evaluate('navigator.serviceWorker.getRegistration().then(r => r.update())')
+                    expect(page.locator('#pwa-update')).to_be_visible()
+                    self.assertEqual(page.locator('body').get_attribute('data-release'), old_release)
+                    expect(page.locator('input[name=username]')).to_have_value('unsaved example')
+                    page.once('dialog', lambda dialog: dialog.dismiss())
+                    page.get_by_role('button', name='Reload to update').click()
+                    expect(page.locator('input[name=username]')).to_have_value('unsaved example')
+                    page.once('dialog', lambda dialog: dialog.accept())
+                    page.get_by_role('button', name='Reload to update').click()
+                    try:
+                        page.wait_for_function('(old) => document.body.dataset.release !== old', arg=old_release, timeout=5000)
+                    except Exception:
+                        self.fail(str(page.evaluate('''async () => { const r=await navigator.serviceWorker.getRegistration(); return {release:document.body.dataset.release, waiting:r.waiting?.state, active:r.active?.state, controller:navigator.serviceWorker.controller?.state, disabled:document.querySelector('#pwa-update button').disabled, caches:await caches.keys()}; }''')))
+                    expect(other.locator('input[name=username]')).to_have_value('keep my draft')
+                    if release == 'test-release-a':
+                        self.assertEqual(page.locator('body').get_attribute('data-release'), first)
+                        self.assertEqual(page.locator('script[src*="pwa.js"]').get_attribute('src'), first_asset)
+                    else:
+                        self.assertNotEqual(page.locator('script[src*="pwa.js"]').get_attribute('src'), first_asset)
+                    self.assertEqual(page.evaluate('caches.keys()'), ['widgetdeck-pwa-v1-' + page.locator('body').get_attribute('data-release')])
                 context.close()
                 browser.close()
         finally:

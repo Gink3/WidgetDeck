@@ -5,6 +5,12 @@
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   background: #5c303f; color: #ffdbe3; border-top: 1px solid #a6536b;
 }
+#pwa-update:not([hidden]) {
+  position: sticky; bottom: 0; z-index: 99; display: flex; flex-wrap: wrap;
+  gap: 12px; align-items: center; padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: var(--panel); border-top: 1px solid var(--accent-hi);
+}
 @media (pointer: coarse), (max-width: 720px) {
   body button:not([role="gridcell"]):not([data-draw-cell]), body summary, body [role="button"],
   body nav a, body a:is(.primary,.secondary,.workspace-back,.workspace-utility-back) {
