@@ -121,3 +121,8 @@ body > header > #main-navigation { display:flex; min-height:64px; align-items:ce
 .account-storage-panel summary { cursor:pointer; }
 .account-storage-panel button { margin:4px; min-height:44px; }
 .account-storage-panel[data-error=true] { border-color:#e9a1b3; }
+.draft-recovery{padding:12px;margin:12px 0;border:1px solid var(--rule);border-radius:8px;background:var(--panel);overflow-wrap:anywhere}
+.draft-recovery summary{cursor:pointer;color:var(--teal)}
+.draft-recovery button{margin:4px;min-height:44px}
+.draft-recovery textarea{width:100%;min-height:120px;font-size:16px}
+.draft-recovery[hidden],.draft-recovery [hidden]{display:none!important}

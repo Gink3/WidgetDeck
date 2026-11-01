@@ -27,7 +27,7 @@ class WidgetManagerTests(unittest.TestCase):
             self.git(path, 'init', '-q')
             self.git(path, 'config', 'user.name', 'Synthetic fixture')
             self.git(path, 'config', 'user.email', 'fixture@example.invalid')
-        self.write(self.core, 'dashboard/widgets/manifest.py', "API_VERSION = Version('1.5.0')\n")
+        self.write(self.core, 'dashboard/widgets/manifest.py', f"API_VERSION = Version('{manager.API_VERSION}')\n")
         self.write(self.core, 'profiles/public.json', json.dumps(dict(schema_version=1, name='public', sources=[], widgets={})))
         self.write(self.core, 'requirements.txt', '')
         self.write(self.widget, 'package/widget.json', json.dumps({**document(), 'provider': 'fixture'}))

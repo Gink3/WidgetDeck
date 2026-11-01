@@ -1,4 +1,4 @@
-# Widget API version 1.5
+# Widget API version 1.6
 
 Widgets are trusted executable server code. Capabilities describe enabled core
 services; they do not sandbox Python or prevent direct access to server resources.
@@ -70,6 +70,28 @@ element when opening an existing item should start with reading. On phones the
 workspace content receives focus instead of its first editable field. Omitting
 the attribute retains automatic field focus. Older hosts ignore this optional
 presentation hint; forms and saved data remain compatible.
+
+## Recoverable editor drafts (1.6)
+
+Authenticated pages expose `window.WidgetDeckDrafts`. Required users declare
+`core_api: ">=1.6,<2"`. `create({id, resource, host, read, base, restore, dirty,
+validate, title})` binds one editor to a stable widget ID/resource and returns
+`changed()`, `capture()`, `clear()`, `refresh()` and `dispose({preserve:true})`.
+`read()` returns JSON content; `base()` returns its server revision or other
+stable baseline; `restore(value)` updates the editor without submitting it.
+Call `changed()` on edits and `clear()` only after the server acknowledges the
+corresponding snapshot. Dispose a controller before changing resource identity.
+Never use this for credentials, file objects or an offline write queue.
+
+Each loaded editor has a separate account/resource slot. Capture is debounced
+and flushed on page hide, backgrounding and session expiry. Recovery is explicit;
+changed baselines expose a comparison copy instead of applying stale edits.
+Seven-day expiry, a 512 KiB record limit and 20-record/2 MiB account limits bound
+retention. Full/unavailable storage reports an error and retains earlier copies.
+Unexpired drafts from other tabs are never evicted to make space. `onLogout(fn)`
+can register cleanup for an existing owner-scoped draft format. Explicit logout
+clears recovery drafts for that account; expiry retains them for reauthentication.
+Persistent user libraries are separate and must survive logout.
 
 Core API version is independent of Dashboard and widget package versions. Source
 selection, version locks and dependency ordering precede execution. The framework
