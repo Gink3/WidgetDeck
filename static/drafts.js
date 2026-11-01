@@ -132,7 +132,8 @@
     form.addEventListener('input',event=>{if(!event.target.closest('.draft-recovery'))controller.changed();});
     form.addEventListener('change',event=>{if(!event.target.closest('.draft-recovery'))controller.changed();});
     form.addEventListener('click',event=>{if(event.target.closest('button')&&!event.target.closest('.draft-recovery'))controller.changed();});
-    form.addEventListener('submit',()=>{
+    form.addEventListener('submit',event=>{
+      if(event.defaultPrevented)return;
       controller.capture();
       try {
         let token=form.querySelector('input[name=_draft_token]');
@@ -149,7 +150,8 @@
   window.addEventListener('widgetdeck:account-changed', () => {preserve(); active = false;});
   window.addEventListener('widgetdeck:resume', () => {active = !document.body.dataset.accountMismatch; if (active) controllers.forEach(controller=>controller.refresh());});
   window.addEventListener('storage', event => {if (event.key?.startsWith(prefix)) controllers.forEach(controller=>controller.refresh());});
-  document.querySelector('form.logout')?.addEventListener('submit', () => {
+  document.querySelector('form.logout')?.addEventListener('submit', event => {
+    if(event.defaultPrevented)return;
     active = false;
     try { ownedKeys().forEach(key => localStorage.removeItem(key)); cleanup.forEach(callback=>{try{callback();}catch(_){}}); }
     catch (_) { /* Do not block signing out if storage was disabled. */ }

@@ -3,7 +3,7 @@
   const owner = document.body.dataset.owner;
   if (!owner || !window.fetch) return;
   const nativeFetch = window.fetch.bind(window);
-  const state = { reachable: null, session: 'active', saving: 0, failures: new Map(), accepted: false };
+  const state = { reachable: null, session: 'active', verified: false, saving: 0, failures: new Map(), accepted: false };
   window.WidgetDeckRuntime = { state };
   const feedback = document.createElement('p');
   feedback.id = 'pwa-save-feedback'; feedback.hidden = true;
@@ -39,6 +39,7 @@
     if (!state.saving && !state.failures.size) feedbackTimer = setTimeout(() => { feedback.hidden = true; }, 1800);
   }
   function expired() {
+    state.verified = false;
     state.session = 'expired'; sessionNotice.hidden = false; signIn.hidden = false; returnToApp.hidden = true;
     sessionText.textContent = 'Your session expired. Keep this page open to preserve your edits, then sign in again. ';
     window.dispatchEvent(new Event('widgetdeck:session-expired'));
@@ -47,6 +48,7 @@
     signIn.focus({ preventScroll: true });
   }
   function accountChanged() {
+    state.verified = false;
     state.session = 'changed'; sessionNotice.hidden = false; signIn.hidden = true; returnToApp.hidden = false;
     sessionText.textContent = 'This tab belongs to a different account. Its workspace is hidden. ';
     window.dispatchEvent(new Event('widgetdeck:account-changed'));
@@ -63,10 +65,17 @@
     const observed = url.origin === location.origin && url.pathname.includes('/api/') && !credential;
     if (!observed) return nativeFetch(input, options);
     const method = String(options?.method || input.method || 'GET').toUpperCase();
+    const writes = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    if (writes) {
+      if (checkInFlight) await checkInFlight;
+      else if (state.session === 'active' && !state.verified) await checkSession();
+      if (state.session !== 'active' || !state.verified || document.body.dataset.accountMismatch)
+        throw new Error('Your session could not be verified for this account. Sign in again, then retry the save explicitly.');
+    }
     // Computations/uploads may use POST without persisting user content. The
     // optional local hint affects feedback only; auth and connection are observed.
     const mutation = options?.widgetdeckOperation !== 'transient' &&
-      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && url.pathname !== '/api/launcher/recent';
+      writes && url.pathname !== '/api/launcher/recent';
     const key = method + ' ' + url.pathname + url.search;
     if (mutation) {
       if (!state.saving) state.accepted = false;
@@ -97,6 +106,7 @@
 
   async function checkSession() {
     if (document.hidden || checkInFlight) return;
+    state.verified = false;
     checkInFlight = (async () => {
       try {
         const response = await nativeFetch('/api/session', { cache: 'no-store' });
@@ -108,13 +118,24 @@
         delete document.body.dataset.accountMismatch;
         const recovered = state.session !== 'active';
         state.session = 'active'; sessionNotice.hidden = true;
-        window.dispatchEvent(new CustomEvent('widgetdeck:resume', { detail: { recovered } }));
+        state.verified = !document.hidden;
+        if (state.verified) window.dispatchEvent(new CustomEvent('widgetdeck:resume', { detail: { recovered } }));
       } catch (_) { reachable(false); }
     })();
     try { await checkInFlight; } finally { checkInFlight = null; }
   }
   window.WidgetDeckRuntime.checkSession = checkSession;
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkSession(); });
+  document.addEventListener('submit', event => {
+    if (state.session === 'active' && state.verified && !document.body.dataset.accountMismatch) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (state.session === 'active') {
+      feedback.textContent = 'Your session is being checked. Try saving again when the check finishes.';
+      feedback.hidden = false; feedback.dataset.state = 'failed';
+      checkSession();
+    }
+  }, true);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) state.verified=false; else checkSession(); });
   window.addEventListener('pageshow', checkSession);
   window.addEventListener('online', checkSession);
   checkSession();

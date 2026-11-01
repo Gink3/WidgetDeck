@@ -24,8 +24,9 @@ class DraftRecoveryBrowserTests(unittest.TestCase):
 
     def editor(self,page,owner='A',revision=1,ack=None):
         page.goto(self.base+'/login'+('?'+urlencode({'_draft_ack':ack}) if ack else ''))
-        page.set_content('<body data-owner="'+owner+'"><main><label>Draft<textarea id="text"></textarea></label></main><form class="logout" onsubmit="event.preventDefault()"><button>Sign out</button></form></body>')
+        page.set_content('<body data-owner="'+owner+'"><main><label>Draft<textarea id="text"></textarea></label></main><form class="logout"><button>Sign out</button></form></body>')
         page.add_script_tag(url=self.base+'/static/drafts.js')
+        page.evaluate("document.querySelector('form.logout').addEventListener('submit',event=>event.preventDefault())")
         page.evaluate('''revision=>{
           window.revision=revision;window.baseline='';
           window.recovery=WidgetDeckDrafts.create({id:'fixture',resource:'one',host:document.querySelector('main'),

@@ -174,5 +174,28 @@ class RuntimeBrowserTests(unittest.TestCase):
             expect(notes).not_to_be_visible()
             expect(page.get_by_role('link', name='Open the current account', exact=True)).to_be_visible()
             self.assertEqual(self.client.get('/api/tools/kanban/items/' + str(self.item['id'])).json['item']['notes'], 'Original')
+            result=page.evaluate("fetch('/api/pwa-test/blocked-old-account',{method:'POST'}).then(()=>false).catch(()=>true)")
+            self.assertTrue(result);self.assertNotIn('blocked-old-account',self.probe_calls)
+            page.evaluate("()=>{const form=document.createElement('form');form.method='post';form.action='/tools/kanban';const name=document.createElement('input');name.name='name';name.value='Must not enter the other account';form.append(name);document.body.append(form);form.requestSubmit();}")
+            self.assertEqual(other.get('/api/tools/kanban/boards').json['boards'],[])
             context.close()
             browser.close()
+
+    def test_mutations_wait_for_owner_probe_and_are_not_replayed_after_failure(self):
+        from playwright.sync_api import sync_playwright,expect
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();context=self.context(browser);page=context.new_page()
+            page.goto(self.base+'/');page.wait_for_function('WidgetDeckRuntime.state.verified')
+            pending=[];page.route('**/api/session',lambda route:pending.append(route))
+            with page.expect_request(lambda request:request.url.endswith('/api/session')):
+                page.evaluate('WidgetDeckRuntime.checkSession();void 0')
+            page.evaluate("window.blocked=fetch('/api/pwa-test/blocked-pending-probe',{method:'POST'}).then(()=>false).catch(()=>true);void 0")
+            self.assertNotIn('blocked-pending-probe',self.probe_calls)
+            pending[0].fulfill(status=503,json={'error':'Session check temporarily unavailable'})
+            self.assertTrue(page.evaluate('window.blocked'));self.assertNotIn('blocked-pending-probe',self.probe_calls)
+            page.unroute('**/api/session');page.evaluate('WidgetDeckRuntime.checkSession()')
+            page.wait_for_function('WidgetDeckRuntime.state.verified')
+            self.assertNotIn('blocked-pending-probe',self.probe_calls)
+            self.assertEqual(page.evaluate("fetch('/api/pwa-test/explicit-retry',{method:'POST'}).then(r=>r.status)"),200)
+            self.assertEqual(self.probe_calls.count('explicit-retry'),1)
+            context.close();browser.close()

@@ -4,7 +4,7 @@
   document.querySelectorAll('.campaign-tool:not(.kanban-page) form,dialog.campaign-dialog:not(#new-deck-dialog) form').forEach(form=>{
     const state=document.createElement('p');state.className='workspace-save-status';state.setAttribute('role','status');state.setAttribute('aria-live','polite');state.textContent=form.classList.contains('character-card')||form.querySelector('[name=reference_notes]')?'All changes saved':'Ready';form.append(state);
     form.addEventListener('input',()=>{dirtyForms.add(form);state.textContent='Unsaved changes';});
-    form.addEventListener('submit',()=>{dirtyForms.delete(form);state.textContent='Saving…';});
+    form.addEventListener('submit',event=>{if(event.defaultPrevented)return;dirtyForms.delete(form);state.textContent='Saving…';});
     form.closest('dialog')?.addEventListener('close',()=>{dirtyForms.delete(form);});
   });
   window.addEventListener('beforeunload',event=>{if(dirtyForms.size){event.preventDefault();event.returnValue='';}});
