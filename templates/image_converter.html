@@ -5,7 +5,7 @@
 <main class="dashboard converter-page">
   <h1 class="sr-only">Image Converter</h1>
   <section class="converter-panel">
-    <form method="post" enctype="multipart/form-data" class="converter-form">
+    <form method="post" enctype="multipart/form-data" class="converter-form" aria-describedby="converter-limits">
       <label class="converter-upload">Choose images
         <input type="file" name="images" accept=".avif,.bmp,.png,.jpg,.jpeg,.svg,.tif,.tiff,.webp,image/avif,image/bmp,image/png,image/jpeg,image/svg+xml,image/tiff,image/webp" multiple required>
       </label>
@@ -16,8 +16,18 @@
       </label>
       <button class="primary" type="submit">Convert &amp; download</button>
     </form>
+    <p id="converter-selection" role="status" aria-live="polite"></p>
+    <ul id="converter-files" class="converter-files"></ul>
+    <p id="converter-status" role="status" aria-live="polite"></p>
+    <a id="converter-login" href="{{ url_for('login', next=request.path) }}" target="_blank" rel="noopener noreferrer" hidden>Sign in in a new tab, then return here</a>
+    <section id="converter-result" hidden aria-label="Converted file">
+      <p id="converter-result-name"></p>
+      <div class="workspace-actions"><a id="converter-save" class="primary" download>Save file</a><button id="converter-share" type="button" hidden>Share file</button></div>
+      <p class="hint">On iPhone, save the file to Files. Multiple images are packaged in a ZIP.</p>
+    </section>
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   </section>
-  <p class="converter-note">JPEG does not support transparency, so transparent pixels become white. SVG input is rasterized; image-to-SVG output embeds the image rather than tracing it into vectors. Select up to 30 images; each can be up to 30 MB, with a 100 MB batch total. Multiple converted images download as a ZIP.</p>
+  <p class="converter-note" id="converter-limits">JPEG does not support transparency, so transparent pixels become white. SVG input is rasterized; image-to-SVG output embeds the image rather than tracing it into vectors. Select up to 30 images; each can be up to 30 MB, with a 100 MB batch total. Multiple converted images download as a ZIP. For HEIC/HEIF photos, export JPEG or PNG first.</p>
 </main>
+<script src="{{ url_for('static', filename='image_converter.js') }}" defer></script>
 {% endblock %}

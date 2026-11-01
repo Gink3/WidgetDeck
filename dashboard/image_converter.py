@@ -5,7 +5,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import cairosvg
-from flask import Blueprint, render_template, request, send_file
+from flask import Blueprint, jsonify, render_template, request, send_file
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
@@ -98,6 +98,18 @@ def _download_name(filename, target, used_names):
     return candidate
 
 
+def _form_error(message):
+    if request.accept_mimetypes.best == 'application/json':
+        return jsonify(error=message), 400
+    return render_template('image_converter.html', formats=FORMATS, error=message), 400
+
+
+@image_converter.after_request
+def private_conversion(response):
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
+
+
 @image_converter.route("", methods=["GET", "POST"])
 @image_converter.route("/", methods=["GET", "POST"])
 def index():
@@ -109,25 +121,27 @@ def index():
     if not uploaded and request.files.get("image"):
         uploaded = [request.files["image"]]
     if target not in FORMATS:
-        return render_template("image_converter.html", formats=FORMATS, error="Choose an output format."), 400
+        return _form_error('Choose an output format.')
     if not uploaded:
-        return render_template("image_converter.html", formats=FORMATS, error="Choose one or more AVIF, PNG, JPEG, or WebP images."), 400
+        return _form_error('Choose one or more supported images. For HEIC photos, export a JPEG or PNG first.')
     if len(uploaded) > MAX_BATCH_FILES:
-        return render_template("image_converter.html", formats=FORMATS, error="Choose no more than 30 images at once."), 400
+        return _form_error('Choose no more than 30 images at once.')
 
     converted_files, total_bytes, used_names = [], 0, set()
     for item in uploaded:
         raw = item.read(MAX_IMAGE_BYTES + 1)
         total_bytes += len(raw)
         if not raw or len(raw) > MAX_IMAGE_BYTES:
-            return render_template("image_converter.html", formats=FORMATS, error=f"{item.filename} must be smaller than 30 MB."), 400
+            return _form_error(f'{item.filename} must be smaller than 30 MB.')
         if total_bytes > MAX_BATCH_BYTES:
-            return render_template("image_converter.html", formats=FORMATS, error="The total upload size must be smaller than 100 MB."), 400
+            return _form_error('The total upload size must be smaller than 100 MB.')
         try:
             converted_files.append((_download_name(item.filename, target, used_names), _convert(raw, target)))
         except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError) as error:
             message = str(error) if isinstance(error, ValueError) else "could not be converted"
-            return render_template("image_converter.html", formats=FORMATS, error=f"{item.filename}: {message}"), 400
+            if Path(item.filename).suffix.lower() in {'.heic', '.heif'}:
+                message = 'HEIC/HEIF is not supported here. Export this photo as JPEG or PNG first.'
+            return _form_error(f'{item.filename}: {message}')
 
     if len(converted_files) == 1:
         filename, content = converted_files[0]
