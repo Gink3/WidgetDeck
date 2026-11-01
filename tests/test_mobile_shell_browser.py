@@ -45,6 +45,31 @@ class MobileShellBrowserTests(unittest.TestCase):
                 context.close()
             browser.close()
 
+    def test_dialog_remains_usable_after_viewport_shrinks(self):
+        from playwright.sync_api import sync_playwright, expect
+        client = self.app.test_client()
+        auth_post(client, '/register', {'username': 'mobile-dialog', 'password': 'test-only-password'})
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            context = browser.new_context(viewport={'width': 390, 'height': 844})
+            context.add_cookies([{'name': 'dashboard_session',
+                                 'value': client.get_cookie('dashboard_session').value, 'url': self.base}])
+            page = context.new_page()
+            page.goto(self.base + '/tools/kanban')
+            page.get_by_role('button', name='+ New board', exact=True).click()
+            dialog = page.locator('#new-kanban')
+            expect(dialog).to_be_visible()
+            # Exercise a small available viewport; real iOS keyboard remains a device check.
+            page.set_viewport_size({'width': 390, 'height': 320})
+            expect(page.locator('html')).to_have_css('--mobile-viewport-height', '320px')
+            self.assertLessEqual(dialog.bounding_box()['height'], 304)
+            field = dialog.locator('input[name=name]')
+            field.fill('Keyboard-sized viewport')
+            dialog.get_by_role('button', name='Cancel', exact=True).click()
+            expect(dialog).not_to_be_visible()
+            context.close()
+            browser.close()
+
     def test_kanban_small_action_targets_and_desktop_compatibility(self):
         from playwright.sync_api import sync_playwright
         client = self.app.test_client()
