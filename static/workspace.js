@@ -25,7 +25,7 @@
     window.addEventListener('popstate',()=>{browsingRequested=false;});
     document.addEventListener('submit',event=>{if(event.target.id==='new-flashcard-deck')browsingRequested=false;});
     content.tabIndex=-1;
-    const showEditor=()=>{wrapper.classList.add('mobile-editing');wrapper.classList.remove('mobile-browsing');if(innerWidth<=720)requestAnimationFrame(()=>{const field=content.querySelector('textarea:not(:disabled),input:not(:disabled):not([type=hidden])');(field||content).focus({preventScroll:true});});};
+    const showEditor=()=>{wrapper.classList.add('mobile-editing');wrapper.classList.remove('mobile-browsing');if(innerWidth<=720)requestAnimationFrame(()=>{const field=main.dataset.workspaceAutofocus==='false'?null:content.querySelector('textarea:not(:disabled),input:not(:disabled):not([type=hidden])');(field||content).focus({preventScroll:true});});};
     window.addEventListener('workspace:selected',()=>{if(!browsingRequested)showEditor();});
     const showLibrary=()=>{browsingRequested=true;wrapper.classList.remove('mobile-editing');wrapper.classList.add('mobile-browsing');search.focus();};
     back.addEventListener('click',showLibrary);window.addEventListener('workspace:browse',showLibrary);

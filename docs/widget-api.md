@@ -65,6 +65,12 @@ core consumes its navigation, service, settings, search, resolver and activity c
 
 ## Compatibility
 
+Campaign workspaces may set `data-workspace-autofocus="false"` on their `main`
+element when opening an existing item should start with reading. On phones the
+workspace content receives focus instead of its first editable field. Omitting
+the attribute retains automatic field focus. Older hosts ignore this optional
+presentation hint; forms and saved data remain compatible.
+
 Core API version is independent of Dashboard and widget package versions. Source
 selection, version locks and dependency ordering precede execution. The framework
 preserves the legacy database helpers through `dashboard.four_ad.models` while

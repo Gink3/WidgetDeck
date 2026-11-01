@@ -8,6 +8,21 @@ from test_security_boundaries import isolated_application, auth_post
 
 
 class MobileShellBrowserTests(unittest.TestCase):
+    def test_workspace_reading_hint_preserves_default_field_focus(self):
+        from playwright.sync_api import sync_playwright, expect
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            page = browser.new_page(viewport={'width': 390, 'height': 844})
+            for hint in ('', ' data-workspace-autofocus="false"'):
+                page.goto(self.base + '/login?table=1')
+                page.set_content('<main class="campaign-tool"' + hint + '><div class="tool-heading"></div>'
+                                 '<label class="campaign-select">Items<select><option value="1">One</option></select></label>'
+                                 '<form><label>Entry<textarea></textarea></label></form></main>')
+                page.add_script_tag(url=self.base + '/static/workspace.js')
+                expect(page.locator('.workspace-content' if hint else 'textarea')).to_be_focused()
+                expect(page.locator('.workspace-split')).to_have_class('workspace-split mobile-editing')
+            browser.close()
+
     @classmethod
     def setUpClass(cls):
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
