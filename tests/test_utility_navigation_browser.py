@@ -26,6 +26,7 @@ class UtilityNavigationBrowserTests(unittest.TestCase):
             page.locator('#utility-search').fill('wiki');expect(page.locator('#home-search-results [role=option][data-utility=wiki]')).not_to_have_count(0)
             page.locator('#utility-search').fill('no-such-tool')
             expect(page.locator('#utility-results')).to_contain_text('No utilities found')
+            page.get_by_role('button',name='Menu',exact=True).click()
             page.get_by_text('Utilities',exact=True).click()
             page.locator('#utility-menu-search').fill('wiki')
             expect(page.locator('.utility-menu-group a:visible')).to_have_count(1)

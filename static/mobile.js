@@ -38,4 +38,35 @@
   window.addEventListener('resize', viewportChanged);
   document.addEventListener('focusin', viewportChanged);
   viewportChanged();
+
+  const navigation = document.querySelector('#main-navigation');
+  const toggle = document.querySelector('#mobile-nav-toggle');
+  if (navigation && toggle) {
+    const phone = matchMedia('(max-width: 720px)');
+    let expanded = false;
+    function renderNavigation() {
+      document.body.classList.toggle('mobile-nav-ready', phone.matches);
+      toggle.hidden = !phone.matches;
+      navigation.hidden = phone.matches && !expanded;
+      toggle.setAttribute('aria-expanded', String(phone.matches && expanded));
+    }
+    toggle.addEventListener('click', () => {
+      expanded = !expanded;
+      renderNavigation();
+      if (expanded) navigation.querySelector('button,a,summary')?.focus();
+    });
+    phone.addEventListener('change', () => { expanded = false; renderNavigation(); });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !event.defaultPrevented && phone.matches && expanded &&
+          !event.target.closest('dialog')) {
+        expanded = false; renderNavigation(); toggle.focus();
+      }
+    });
+    document.addEventListener('click', event => {
+      if (phone.matches && expanded && !event.target.closest('body > header,dialog')) {
+        expanded = false; renderNavigation();
+      }
+    });
+    renderNavigation();
+  }
 })();

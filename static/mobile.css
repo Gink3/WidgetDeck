@@ -11,6 +11,26 @@
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   background: var(--panel); border-top: 1px solid var(--accent-hi);
 }
+#main-navigation[hidden], #mobile-nav-toggle[hidden] { display: none !important; }
+@media (max-width: 720px) {
+  .mobile-nav-ready > header { flex-wrap: nowrap; align-items: center; padding-bottom: 8px; }
+  .mobile-nav-ready > header .header-identity { flex: 1; }
+  .mobile-nav-ready > header .brand-logo { width: 64px; }
+  #mobile-nav-toggle { flex: none; background: var(--panel-hi); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; }
+  .mobile-nav-ready > header #main-navigation {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 25;
+    max-width: 100%; width: 100%; max-height: calc(var(--mobile-viewport-height,100dvh) - 90px);
+    overflow-y: auto; display: flex; flex-direction: column; align-items: stretch;
+    padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--rule);
+    box-shadow: 0 12px 24px #0006;
+  }
+  .mobile-nav-ready #main-navigation .nav-menu-list {
+    position: static; width: 100%; max-width: 100%; min-width: 0; box-shadow: none;
+  }
+  .mobile-nav-ready #main-navigation .nav-menu:not([open]) > .nav-menu-list { display: none; }
+  .mobile-nav-ready #main-navigation .logout { margin: 0; }
+  .mobile-nav-ready #main-navigation .logout button { width: 100%; text-align: left; }
+}
 @media (pointer: coarse), (max-width: 720px) {
   body button:not([role="gridcell"]):not([data-draw-cell]), body summary, body [role="button"],
   body nav a, body a:is(.primary,.secondary,.workspace-back,.workspace-utility-back) {
