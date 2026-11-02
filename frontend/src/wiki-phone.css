@@ -1,0 +1,58 @@
+.wiki-table-scroll{max-width:100%;overflow:auto;margin:14px 0;overscroll-behavior-x:contain}
+.wiki-properties>summary{font-weight:bold;font-size:20px;cursor:pointer}
+.wiki-editor.wiki-phone{height:auto;min-height:0}
+#wiki-root:has(.wiki-phone){min-height:100dvh;padding-bottom:max(0px,calc(100dvh - var(--mobile-viewport-height,100dvh)))}
+#wiki-root:has(.wiki-phone[data-mode=edit])>.wiki-inbox-toggle{display:none}
+.wiki-editor.wiki-phone>.wiki-toolbar{position:sticky;top:var(--mobile-viewport-top,0px);z-index:25;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'library title save' 'modes modes modes' 'status status status';gap:6px;padding:8px;min-height:0;flex-shrink:0}
+.wiki-phone>.wiki-toolbar>button:first-child{grid-area:library}
+.wiki-phone>.wiki-toolbar>button.primary{grid-area:save}
+.wiki-phone>.wiki-toolbar>input{grid-area:title;width:100%;max-width:none;min-width:0;font-size:16px}
+.wiki-phone>.wiki-toolbar>span{grid-area:status;display:block;font-size:12px;line-height:1.3;overflow-wrap:anywhere}
+.wiki-phone>.wiki-toolbar>div{grid-area:modes;margin:0;display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+.wiki-editor.wiki-phone button,.wiki-editor.wiki-phone summary{min-height:44px;box-sizing:border-box}
+.wiki-editor.wiki-phone>.wiki-local-status{display:none}
+.wiki-editor.wiki-phone .wiki-workspace{display:block;min-height:0;flex:none}
+.wiki-editor.wiki-phone .wiki-workspace.split .wiki-edit-pane{display:none}
+.wiki-editor.wiki-phone .wiki-workspace.edit .wiki-edit-pane{display:flex;position:relative;height:max(156px,calc(var(--mobile-viewport-height,100dvh) - var(--wiki-toolbar-height,132px)));min-height:0;overflow:visible}
+.wiki-editor.wiki-phone .wiki-edit-pane>textarea{min-height:96px;height:auto;flex:1;resize:none;font-size:16px;padding:12px;overflow:auto;scroll-margin-top:calc(var(--wiki-toolbar-height,132px) + 72px)}
+.wiki-editor.wiki-phone .wiki-editor-hint{display:none}
+.wiki-editor.wiki-phone[data-completing=true] .wiki-edit-pane>textarea{min-height:44px;padding:8px;order:2}
+.wiki-editor.wiki-phone .wiki-completions{position:static;max-height:88px;min-height:44px;overflow:auto;z-index:15;overscroll-behavior:contain;order:3;flex-shrink:1}
+.wiki-editor.wiki-phone .wiki-preview-pane{padding:12px 16px;overflow:visible;min-height:0}
+.wiki-editor.wiki-phone .wiki-reading-layout,.wiki-editor.wiki-phone .split .wiki-reading-layout{grid-template-columns:minmax(0,1fr);gap:12px}
+.wiki-editor.wiki-phone .wiki-section-tree,.wiki-editor.wiki-phone .split .wiki-section-tree{position:static;max-height:none;padding:0;border:0;font-size:14px}
+.wiki-editor.wiki-phone .wiki-section-tree>details>summary{display:flex;align-items:center;border:1px solid var(--rule);border-radius:6px;padding:8px 12px;font-size:15px}
+.wiki-editor.wiki-phone .wiki-section-tree>details>summary:before,.wiki-editor.wiki-phone .wiki-properties>summary:before{content:'▸';margin-right:8px}
+.wiki-editor.wiki-phone .wiki-section-tree>details[open]>summary:before,.wiki-editor.wiki-phone .wiki-properties[open]>summary:before{content:'▾'}
+.wiki-editor.wiki-phone .wiki-section-tree>details>ol{max-height:40dvh;overflow:auto;overscroll-behavior:contain}
+.wiki-editor.wiki-phone .wiki-section-tree a{min-height:44px;display:flex;align-items:center;padding:6px}
+.wiki-editor.wiki-phone .markdown-preview{max-width:100%;min-width:0;font-size:16px;overflow-wrap:anywhere}
+.wiki-editor.wiki-phone .markdown-preview h1{font-size:28px;margin-top:12px}
+.wiki-editor.wiki-phone [data-wiki-heading],.wiki-editor.wiki-phone #article-top{scroll-margin-top:calc(var(--mobile-viewport-top,0px) + var(--wiki-toolbar-height,132px) + 12px)}
+.wiki-editor.wiki-phone .wiki-table-scroll table{width:max-content;min-width:100%;max-width:none}
+.wiki-editor.wiki-phone .wiki-table-scroll th,.wiki-editor.wiki-phone .wiki-table-scroll td{max-width:32ch;overflow-wrap:anywhere}
+.wiki-editor.wiki-phone .wiki-infobox{float:none;width:100%;margin:12px 0;box-sizing:border-box}
+.wiki-editor.wiki-phone .wiki-properties{margin:12px 0;padding:12px;border:1px solid var(--rule);border-radius:6px}
+.wiki-editor.wiki-phone .wiki-properties>summary{font-size:16px;display:flex;align-items:center}
+.wiki-editor.wiki-phone .wiki-format-toolbar{position:sticky;top:calc(var(--mobile-viewport-top,0px) + var(--wiki-toolbar-height,132px));display:flex;flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;gap:4px;padding:6px;z-index:20;touch-action:pan-x}
+.wiki-editor.wiki-phone .wiki-format-toolbar>*{flex-shrink:0}
+.wiki-editor.wiki-phone .wiki-format-toolbar[data-menu-open=true]{z-index:40}
+.wiki-editor.wiki-phone .wiki-format-toolbar button{min-width:44px;height:44px;white-space:nowrap}
+.wiki-editor.wiki-phone .wiki-format-toolbar [data-format-group=emphasis]{order:-2}
+.wiki-editor.wiki-phone .wiki-format-toolbar [data-format-group=insert]{order:-1}
+.wiki-editor.wiki-phone .wiki-format-menu{overscroll-behavior:contain;touch-action:pan-y}
+.wiki-editor.wiki-phone .wiki-format-menu button{white-space:normal}
+.wiki-editor.wiki-phone .wiki-equation-preview{max-height:min(140px,20dvh);padding:8px;box-sizing:border-box}
+.wiki-editor.wiki-phone .wiki-edit-pane:has(>.wiki-equation-preview)>textarea{min-height:64px}
+.wiki-preview-label{color:var(--muted);font-size:13px;margin:0 0 8px}
+.wiki-editor.wiki-phone .wiki-help-dialog{box-sizing:border-box;width:min(600px,calc(100vw - 16px));max-height:calc(var(--mobile-viewport-height,100dvh) - 16px);overflow:auto;padding:16px;border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
+@media(max-width:900px){
+ .wiki-inbox{top:var(--mobile-viewport-top,0px);bottom:auto;height:var(--mobile-viewport-height,100dvh);max-height:var(--mobile-viewport-height,100dvh);padding-bottom:max(16px,env(safe-area-inset-bottom));overscroll-behavior:contain}
+ .wiki-inbox>header{position:sticky;top:0;background:var(--panel);z-index:2}
+ .wiki-inbox button{min-height:44px}
+ .wiki-document-overlay[open]{box-sizing:border-box;width:calc(100vw - 16px);max-height:calc(var(--mobile-viewport-height,100dvh) - 16px);padding:0}
+ .wiki-document-overlay .wiki-document-viewer{width:100%;height:auto;max-height:calc(var(--mobile-viewport-height,100dvh) - 16px);padding:12px;overflow:auto}
+ .wiki-document-viewer>header{position:sticky;top:0;background:var(--panel);padding:8px 0;z-index:1}
+ .wiki-document-viewer button,.wiki-document-viewer a{min-height:44px}
+ .wiki-document-viewer .wiki-pdf-page{max-width:100%;height:auto;max-height:none}
+}

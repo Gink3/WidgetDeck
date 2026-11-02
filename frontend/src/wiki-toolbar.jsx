@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { templates } from "./wiki-utils.mjs";
 import "./wiki-toolbar.css";
 
@@ -32,6 +32,20 @@ export function EditorToolbar({ insert, block, formatTable, editTable, wordWrap,
     document.addEventListener("pointerdown", close); document.addEventListener("keydown", close);
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); };
   }, []);
+  useLayoutEffect(()=>{
+    if(!menu)return;
+    const position=()=>{
+      const popup=root.current?.querySelector('.wiki-format-menu'),anchor=root.current?.querySelector('button[aria-expanded=true]');
+      if(!popup || !anchor)return;
+      if(!matchMedia('(max-width:900px)').matches){for(const name of ['position','left','right','top','max-height','width','box-sizing'])popup.style.removeProperty(name);return;}
+      const viewport=window.visualViewport,top=viewport?.offsetTop||0,left=viewport?.offsetLeft||0,width=viewport?.width||innerWidth,height=viewport?.height||innerHeight,rect=anchor.getBoundingClientRect();
+      const popupWidth=Math.min(popup.getBoundingClientRect().width,width-16),below=top+height-rect.bottom-8,above=rect.top-top-8;
+      const down=below>=160 || below>=above,available=Math.max(44,Math.min(340,down?below:above));
+      Object.assign(popup.style,{position:'fixed',boxSizing:'border-box',width:popupWidth+'px',left:Math.max(left+8,Math.min(rect.left,left+width-popupWidth-8))+'px',right:'auto',top:(down?rect.bottom+6:Math.max(top+8,rect.top-available-6))+'px',maxHeight:available+'px'});
+    };
+    position();window.addEventListener('resize',position);window.addEventListener('scroll',position,true);window.visualViewport?.addEventListener('resize',position);window.visualViewport?.addEventListener('scroll',position);
+    return()=>{window.removeEventListener('resize',position);window.removeEventListener('scroll',position,true);window.visualViewport?.removeEventListener('resize',position);window.visualViewport?.removeEventListener('scroll',position);};
+  },[menu]);
   const action = fn => { fn(); setMenu(""); setSearch(""); };
   const button = (name, label, fn, disabled = false) => <button type="button" title={label} aria-label={label} disabled={disabled} onMouseDown={e => e.preventDefault()} onClick={fn}><EditorIcon name={name} /></button>;
   const entries = [
@@ -46,15 +60,15 @@ export function EditorToolbar({ insert, block, formatTable, editTable, wordWrap,
     ...macros.macros.map(m => ({ name: m.name, group: macros.custom.some(c => c.name === m.name) ? "Custom macros / templates" : "Macros", run: () => insert("\n" + m.content + "\n") })),
     ...Object.entries(templates).map(([name, content]) => ({ name, group: "Page templates", run: () => insert("\n" + content + "\n") })),
   ];
-  return <div className="wiki-format-toolbar" ref={root} role="toolbar" aria-label="Text formatting">
+  return <div className="wiki-format-toolbar" data-menu-open={Boolean(menu)} ref={root} role="toolbar" aria-label="Text formatting">
     <div className="wiki-format-group">{button("undo", "Undo", undo, !canUndo)}{button("redo", "Redo", redo, !canRedo)}</div>
     <div className="wiki-format-menu-anchor">
       <button type="button" className="wiki-format-text" aria-expanded={menu === "style"} onMouseDown={e => e.preventDefault()} onClick={() => setMenu(menu === "style" ? "" : "style")}>Normal text<EditorIcon name="chevron" /></button>
       {menu === "style" && <div className="wiki-format-menu" aria-label="Text styles">{[["Normal text", ""], ["Heading 1", "# "], ["Heading 2", "## "], ["Heading 3", "### "], ["Heading 4", "#### "]].map(([name, prefix]) => <button key={name} onMouseDown={e => e.preventDefault()} onClick={() => action(() => block(prefix))}>{name}</button>)}</div>}
     </div>
-    <div className="wiki-format-group">{button("bold", "Bold", () => insert("**", "**", "bold text"))}{button("italic", "Italic", () => insert("_", "_", "italic text"))}{button("strike", "Strikethrough", () => insert("~~", "~~", "text"))}{button("code", "Inline code", () => insert("`", "`", "code"))}</div>
+    <div className="wiki-format-group" data-format-group="emphasis">{button("bold", "Bold", () => insert("**", "**", "bold text"))}{button("italic", "Italic", () => insert("_", "_", "italic text"))}{button("strike", "Strikethrough", () => insert("~~", "~~", "text"))}{button("code", "Inline code", () => insert("`", "`", "code"))}</div>
     <div className="wiki-format-group">{button("bullet", "Bulleted list", () => block("- "))}{button("numbered", "Numbered list", () => block("1. "))}{button("task", "Task list", () => block("- [ ] "))}</div>
-    <div className="wiki-format-group">{button("link", "Insert link", () => insert("[", "](https://)", "Link text"))}{button("image", "Insert image", () => chooseImage("inline"))}{button("table", "Insert table", () => insert("\n\n| Column 1 | Column 2 |\n| --- | --- |\n|  |  |\n\n"))}</div>
+    <div className="wiki-format-group" data-format-group="insert">{button("link", "Insert link", () => insert("[", "](https://)", "Link text"))}{button("image", "Insert image", () => chooseImage("inline"))}{button("table", "Insert table", () => insert("\n\n| Column 1 | Column 2 |\n| --- | --- |\n|  |  |\n\n"))}</div>
     <div className="wiki-format-menu-anchor">
       <button type="button" className="wiki-format-text" aria-expanded={menu === "table"} onMouseDown={e => e.preventDefault()} onClick={() => setMenu(menu === "table" ? "" : "table")}>Table tools<EditorIcon name="chevron" /></button>
       {menu === "table" && <div className="wiki-format-menu" aria-label="Table tools">{[["row-before","Insert row above"],["row-after","Insert row below"],["delete-row","Delete row"],["column-before","Insert column left"],["column-after","Insert column right"],["delete-column","Delete column"]].map(([command,label]) => <button key={command} onMouseDown={e => e.preventDefault()} onClick={() => action(() => editTable(command))}>{label}</button>)}</div>}

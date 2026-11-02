@@ -12,8 +12,10 @@ function nested(headings) {
   }
   return roots;
 }
-export function SectionTree({ headings }) {
+export function SectionTree({ headings, phone=false }) {
   const [active, setActive] = useState("");
+  const [expanded,setExpanded]=useState(!phone);
+  useEffect(()=>setExpanded(!phone),[phone]);
   useEffect(() => {
     let frame;
     const update = () => {
@@ -21,7 +23,7 @@ export function SectionTree({ headings }) {
       frame = requestAnimationFrame(() => {
         const pane = document.querySelector(".wiki-preview-pane");
         const top =
-          innerWidth > 800 ? pane?.getBoundingClientRect().top || 0 : 0;
+          phone ? document.querySelector('.wiki-toolbar')?.getBoundingClientRect().bottom || 0 : pane?.getBoundingClientRect().top || 0;
         const nodes = [...document.querySelectorAll("[data-wiki-heading]")];
         const current =
           nodes
@@ -38,12 +40,12 @@ export function SectionTree({ headings }) {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [headings.map((h) => h.id).join("|")]);
+  }, [headings.map((h) => h.id).join("|"),phone]);
   const list = (nodes) => (
     <ol>
       {nodes.map((h) => (
         <li key={h.id}>
-          <a href={"#" + h.id} aria-current={active === h.id ? "location" : undefined}>{h.title}</a>
+          <a href={"#" + h.id} onClick={()=>{if(phone)setExpanded(false);}} aria-current={active === h.id ? "location" : undefined}>{h.title}</a>
           {h.children.length > 0 && list(h.children)}
         </li>
       ))}
@@ -51,9 +53,10 @@ export function SectionTree({ headings }) {
   );
   return (
     <nav className="wiki-section-tree" aria-label="Article sections">
-      <h2>On this page</h2>
+      <details open={expanded} onToggle={event=>setExpanded(event.currentTarget.open)}><summary>On this page</summary>
         <a href="#article-top">Top of page</a>
         {headings.length ? list(nested(headings)) : <p>No sections yet.</p>}
+      </details>
     </nav>
   );
 }

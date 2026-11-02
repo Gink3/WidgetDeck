@@ -43,6 +43,8 @@ import {
 import { SectionTree, BackupManager } from "./wiki-reading.jsx";
 import { figureBlocks, figureTemplate } from "./wiki-figures.mjs";
 import { EditorToolbar } from "./wiki-toolbar.jsx";
+import { usePhone } from './use-phone.mjs';
+import './wiki-phone.css';
 import { formatTableAt, editTableAt } from "./wiki-tables.mjs";
 import { WikiGraph } from "./wiki-graph.jsx";
 import { Inbox } from "./wiki-inbox.jsx";
@@ -153,6 +155,9 @@ function MacroManager({ state }) {
     </details>
   );
 }
+function ScrollableTable({children}) {
+  return <div className="wiki-table-scroll" tabIndex={0} role="region" aria-label="Scrollable table"><table>{children}</table></div>;
+}
 function Markdown({ content, pages, counts = {}, navigation = true }) {
   const parts = figureBlocks(content);
   if (parts.some(part => part.type === "figure")) return <>{parts.map((part, index) => part.type === "figure" ? (
@@ -211,6 +216,7 @@ function Markdown({ content, pages, counts = {}, navigation = true }) {
       rehypePlugins={[rehypeRaw, rehypeSanitize, [rehypeKatex, { trust: false, strict: "ignore" }]]}
       components={{
         ...headings,
+        table:ScrollableTable,
         a: ({ href, children }) => (
           <PageLink href={href} pages={pages}>
             {children}
@@ -264,7 +270,9 @@ function EquationPreview({ equation }) {
       <div dangerouslySetInnerHTML={{ __html: html }} />}
   </aside>;
 }
-function Preview({ page, pages }) {
+function Preview({ page, pages, phone=false }) {
+  const [propertiesOpen,setPropertiesOpen]=useState(!phone);
+  useEffect(()=>setPropertiesOpen(!phone),[phone]);
   const tokens = wikiTokens(page.content);
   const targets = [
     ...new Map(
@@ -294,7 +302,7 @@ function Preview({ page, pages }) {
   );
   return (
     <div className="wiki-reading-layout">
-      <SectionTree headings={headings} />
+      <SectionTree headings={headings} phone={phone} />
       <article className="markdown-preview" id="article-top">
         <h1>{page.title}</h1>
         {primaryInfobox >= 0 && (
@@ -323,8 +331,8 @@ function Preview({ page, pages }) {
         )}
         <TopicList page={page} pages={pages} />
         {primaryInfobox < 0 && Object.keys(meta.properties).length > 0 && (
-          <section className="wiki-properties">
-            <h2>Properties</h2>
+          <details className="wiki-properties" open={propertiesOpen} onToggle={event=>setPropertiesOpen(event.currentTarget.open)}>
+            <summary>Properties</summary>
             <dl>
               {Object.entries(meta.properties).map(([k, v]) => (
                 <React.Fragment key={k}>
@@ -333,7 +341,7 @@ function Preview({ page, pages }) {
                 </React.Fragment>
               ))}
             </dl>
-          </section>
+          </details>
         )}
         {meta.sources.length > 0 && (
           <section className="wiki-references">
@@ -1015,6 +1023,7 @@ function Properties({ page, update, pages }) {
   );
 }
 function Editor() {
+  const phone=usePhone(),editorRoot=useRef(null),helpDialog=useRef(null);
   const [wordWrap, setWordWrap] = useState(() => {
     try { return localStorage.getItem("dashboard.wiki.word-wrap") !== "off"; }
     catch { return true; }
@@ -1065,6 +1074,36 @@ function Editor() {
   }, [page]);
   const macros = useMacros();
   const [editSession] = useState(() => newId());
+  useLayoutEffect(()=>{
+    if(!phone || !editorRoot.current)return;
+    const toolbar=editorRoot.current.querySelector('.wiki-toolbar');
+    const update=()=>editorRoot.current?.style.setProperty('--wiki-toolbar-height',Math.ceil(toolbar.getBoundingClientRect().height)+'px');
+    const observer=new ResizeObserver(update);observer.observe(toolbar);update();return()=>observer.disconnect();
+  },[phone,Boolean(page)]);
+  useEffect(()=>{
+    if(!phone)return;
+    let frame;
+    const align=()=>{
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(()=>{
+        if(document.activeElement!==textarea.current || Math.abs((window.visualViewport?.scale||1)-1)>.01)return;
+        const toolbar=editorRoot.current?.querySelector('.wiki-toolbar'),pane=editorRoot.current?.querySelector('.wiki-edit-pane');
+        if(toolbar && pane)scrollBy(0,pane.getBoundingClientRect().top-(window.visualViewport?.offsetTop||0)-toolbar.getBoundingClientRect().height);
+      });});
+    };
+    document.addEventListener('focusin',align);window.addEventListener('resize',align);window.visualViewport?.addEventListener('resize',align);window.visualViewport?.addEventListener('scroll',align);
+    return()=>{cancelAnimationFrame(frame);document.removeEventListener('focusin',align);window.removeEventListener('resize',align);window.visualViewport?.removeEventListener('resize',align);window.visualViewport?.removeEventListener('scroll',align);};
+  },[phone]);
+  function changeMode(next) {
+    setMode(next);
+    if(phone)requestAnimationFrame(()=>{
+      const toolbar=editorRoot.current?.querySelector('.wiki-toolbar');
+      const target=next==='edit'?editorRoot.current?.querySelector('.wiki-edit-pane'):editorRoot.current;
+      if(toolbar && target)scrollBy(0,target.getBoundingClientRect().top-(window.visualViewport?.offsetTop||0)-(next==='edit'?toolbar.getBoundingClientRect().height:0));
+      if(next==='edit')textarea.current?.focus({preventScroll:true});
+      else {textarea.current?.blur();const article=editorRoot.current?.querySelector('.markdown-preview');if(article){article.tabIndex=-1;article.focus({preventScroll:true});}}
+    });
+  }
   useEffect(() => {
     if (initialSlug === "new") {
       api("/pages", {
@@ -1450,9 +1489,9 @@ function Editor() {
       <main className="wiki-loading">{error || "Loading wiki page…"}</main>
     );
   return (
-    <main className="wiki-editor">
+    <main ref={editorRoot} className={'wiki-editor'+(phone?' wiki-phone':'')} data-mode={mode} data-completing={Boolean(completion)}>
       <header className="wiki-toolbar">
-        <button onClick={returnToLibrary} disabled={uploading}>Wiki library</button>
+        <button aria-label="Wiki library" onClick={returnToLibrary} disabled={uploading}>{phone?'Library':'Wiki library'}</button>
         <button className="primary" disabled={leaving || uploading} onClick={leave}>
           {leaving ? "Saving…" : "Save"}
         </button>
@@ -1462,19 +1501,22 @@ function Editor() {
           aria-label="Page title"
           readOnly={mode === "preview"}
         />
-        <span role="status">{status}</span>
+        <span role="status">{status}{phone && localMessage?' · '+localMessage:''}</span>
         <div>
           {["edit", "split", "preview"].map((m) => (
             <button
               key={m}
               className={mode === m ? "selected" : ""}
-              onClick={() => setMode(m)}
+              aria-pressed={mode===m}
+              onClick={() => changeMode(m)}
             >
-              {m === "preview" ? "Read" : m === "edit" ? "Edit" : "Split"}
+              {m === "preview" ? "Read" : m === "edit" ? "Edit" : phone?'Preview':'Split'}
             </button>
           ))}
           <details className="workspace-more"><summary>More</summary><div>
           {mode !== "preview" && <button aria-haspopup="dialog" aria-controls="wiki-page-settings-dialog" onClick={() => settingsDialog.current.showModal()}>Page settings</button>}
+          {phone && <button onClick={()=>helpDialog.current.showModal()}>Editing help</button>}
+          {phone && mode==='edit' && <button aria-controls="wiki-inbox" onClick={event=>{event.currentTarget.closest('details').open=false;document.querySelector('.wiki-inbox-toggle')?.click();}}>Inbox</button>}
           <button onClick={showHistory}>History</button>
           <button
             disabled={uploading}
@@ -1493,6 +1535,7 @@ function Editor() {
         </div>
       </header>
       <div ref={resumeHost} className="wiki-resume-host" />
+          {phone && <dialog ref={helpDialog} className="wiki-help-dialog" aria-label="Editing help"><h2>Editing help</h2><p>Use Insert for elements, macros and templates. Type [[ for pages, [@ for sources, or ::: for macros. Tap a suggestion to insert it. Enter also inserts a suggestion; Escape dismisses. Tab indents; Shift+Tab unindents. Use $…$ for inline math or $$ on separate lines for display math. Type a backslash inside an equation for LaTeX suggestions.</p><button type="button" autoFocus onClick={()=>helpDialog.current.close()}>Close help</button></dialog>}
       {error && (
         <div className="wiki-message" role="alert">
           {error} <button onClick={save}>Retry save</button>
@@ -1758,7 +1801,8 @@ function Editor() {
           />
         </section>
         <section className="wiki-preview-pane">
-          <Preview page={page} pages={pages} />
+          {phone && mode==='split' && <p className="wiki-preview-label">Preview of current edits</p>}
+          <Preview page={page} pages={pages} phone={phone} />
         </section>
       </div>
     </main>
