@@ -12,7 +12,7 @@ def kanban():
     if request.method == "POST":
         name = str(request.form.get("name") or "").strip()[:80] or "Untitled board"
         columns = named_values("column_name", ("To do", "In Progress", "Done"))
-        return redirect(url_for("campaign_tools.kanban", board=models.create_kanban(name, columns)))
+        return native_draft_redirect("campaign_tools.kanban", board=models.create_kanban(name, columns))
     if not request.args and current_app.config.get("LAUNCHER_ENABLED"):
         from dashboard.launcher import recent
         previous=recent(1,'kanban')

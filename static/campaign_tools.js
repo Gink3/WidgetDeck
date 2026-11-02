@@ -14,6 +14,7 @@
       const row = document.createElement('div');
       const input = document.createElement('input');
       input.name = fieldName;
+      if(fieldName==='column_name')input.setAttribute('aria-label','Column name');
       input.placeholder = fieldName.replace('_', ' ');
       row.append(input);
       if (controls) row.insertAdjacentHTML('beforeend', controls);
@@ -31,5 +32,15 @@
 
   addField('[data-add-rdt-field]', '#rdt-fields', 'field_name', '<select name="field_metric"><option value="none">No metric</option><option value="average">Average</option><option value="sum">Sum</option><option value="count">Count filled</option></select>');
   addField('[data-add-kanban-column]', '#kanban-columns', 'column_name');
+  const boardForm=document.querySelector('#new-kanban form[data-draft-form]');
+  if(boardForm)window.WidgetDeckDrafts?.bindForm(boardForm,{
+    prepareRestore(value){
+      if(value[0]?.name!=='name'||value.slice(1).some(field=>field.name!=='column_name'))throw new Error('Board fields changed.');
+      const columns=document.querySelector('#kanban-columns');columns.replaceChildren();
+      value.slice(1).forEach(()=>{
+        document.querySelector('[data-add-kanban-column]').click();
+      });
+    }
+  });
 
 })();
