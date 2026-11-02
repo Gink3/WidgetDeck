@@ -87,6 +87,8 @@ def maps_get(map_id):
 def maps_update(map_id):
     try:
         result = models.update(map_id, body())
+    except models.MapConflict as error:
+        return api_error(error, 409)
     except ValueError as error:
         return api_error(error)
     return jsonify(map=result) if result else api_error("Mind map not found.", 404)

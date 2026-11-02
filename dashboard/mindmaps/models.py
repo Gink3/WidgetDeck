@@ -12,13 +12,18 @@ NODE_TYPES = {"topic", "idea", "question", "note", "reference", "task"}
 EDGE_KINDS = {"hierarchy", "relation"}
 
 
+class MapConflict(ValueError):
+    pass
+
+
 def init_database(app):
     with __import__("sqlite3").connect(app.config["FOUR_AD_DATABASE"]) as connection:
         connection.executescript("""
         CREATE TABLE IF NOT EXISTS mind_maps (
             id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
             viewport TEXT NOT NULL DEFAULT '{"x":0,"y":0,"zoom":1}', layout_mode TEXT NOT NULL DEFAULT 'freeform',
-            settings TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            settings TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+            revision INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS mind_maps_owner_updated ON mind_maps(user_id, updated_at DESC);
         CREATE TABLE IF NOT EXISTS mind_map_nodes (
@@ -37,6 +42,9 @@ def init_database(app):
         CREATE INDEX IF NOT EXISTS mind_map_edges_map ON mind_map_edges(map_id);
         CREATE TABLE IF NOT EXISTS mind_map_settings (user_id INTEGER PRIMARY KEY, data TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL);
         """)
+        connection.execute('BEGIN IMMEDIATE')
+        if 'revision' not in {row[1] for row in connection.execute('PRAGMA table_info(mind_maps)')}:
+            connection.execute('ALTER TABLE mind_maps ADD COLUMN revision INTEGER NOT NULL DEFAULT 0')
 
 
 def owner_id():
@@ -56,7 +64,7 @@ def list_maps():
 
 
 def summary(row):
-    return {"id": row["id"], "name": row["name"], "description": row["description"], "layout_mode": row["layout_mode"], "created_at": row["created_at"], "updated_at": row["updated_at"]}
+    return {"id": row["id"], "name": row["name"], "description": row["description"], "layout_mode": row["layout_mode"], "created_at": row["created_at"], "updated_at": row["updated_at"], "revision": row['revision']}
 
 
 def document(row):
@@ -88,13 +96,27 @@ def update(map_id, payload):
     if not row:
         return None
     data = validate_document(payload)
+    expected = payload.get('revision')
+    if expected is not None and (type(expected) is not int or expected < 0):
+        raise ValueError('A non-negative map revision is required.')
     now = timestamp()
     connection = db()
-    connection.execute("UPDATE mind_maps SET name=?,description=?,viewport=?,layout_mode=?,settings=?,updated_at=? WHERE id=? AND user_id=?", (
-        data["name"], data["description"], json.dumps(data["viewport"]), data["layout_mode"], json.dumps(data["settings"]), now, map_id, owner_id(),
-    ))
-    _replace_graph(map_id, data["nodes"], data["edges"], now)
-    connection.commit()
+    try:
+        connection.execute('BEGIN IMMEDIATE')
+        row = map_row(map_id)
+        if not row:
+            connection.rollback()
+            return None
+        if expected is not None and expected != row['revision']:
+            raise MapConflict('This map changed in another window. Your draft is retained; review the saved version before merging.')
+        connection.execute("UPDATE mind_maps SET name=?,description=?,viewport=?,layout_mode=?,settings=?,updated_at=?,revision=revision+1 WHERE id=? AND user_id=?", (
+            data["name"], data["description"], json.dumps(data["viewport"]), data["layout_mode"], json.dumps(data["settings"]), now, map_id, owner_id(),
+        ))
+        _replace_graph(map_id, data["nodes"], data["edges"], now)
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
     return document(map_row(map_id))
 
 
