@@ -1,7 +1,7 @@
 import re
 from flask import current_app, Blueprint, abort, jsonify, redirect, render_template, request, url_for
 from dashboard.auth import login_required
-from .common_routes import named_values
+from .common_routes import named_values, native_draft_redirect
 from . import kanban_models as models
 
 campaign_tools = Blueprint("campaign_tools", __name__)
@@ -35,6 +35,7 @@ def kanban_add_item(board_id):
     title = str(request.form.get("title") or "").strip()[:160]
     if title and any(column["id"] == column_id for column in models.kanban_columns(board_id)):
         models.add_kanban_item(board_id, column_id, title, str(request.form.get("notes") or "").strip()[:5000])
+        return native_draft_redirect("campaign_tools.kanban", board=board_id, column=column_id)
     return redirect(url_for("campaign_tools.kanban", board=board_id))
 
 

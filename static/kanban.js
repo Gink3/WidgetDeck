@@ -9,6 +9,26 @@
   let destinationRequest = 0;
   let columnMode = false, draggedColumn = null;
   const columnSections = () => [...board.querySelectorAll('.kanban-column')];
+  const filterDisclosure=$('.kanban-filters'),phoneQuery=matchMedia('(max-width:900px)');
+  const fitFilters=()=>{filterDisclosure.open=!phoneQuery.matches;};fitFilters();phoneQuery.addEventListener('change',fitFilters);
+  const phoneColumn=$('#phone-kanban-column');
+  const params=new URLSearchParams(location.search);
+  if([...phoneColumn.options].some(option=>option.value===params.get('column')))phoneColumn.value=params.get('column');
+  if(params.has('q'))$('#kanban-search').value=params.get('q');
+  function showPhoneColumn(id=phoneColumn.value){
+    if([...phoneColumn.options].some(option=>option.value===String(id)))phoneColumn.value=id;
+    columnSections().forEach(section=>section.classList.toggle('phone-selected-column',section.dataset.column===phoneColumn.value));
+    $('#previous-kanban-column').disabled=phoneColumn.selectedIndex<=0;
+    $('#next-kanban-column').disabled=phoneColumn.selectedIndex>=phoneColumn.options.length-1;
+    const url=new URL(location.href);url.searchParams.set('column',phoneColumn.value);history.replaceState(null,'',url);
+  }
+  phoneColumn.addEventListener('change',()=>showPhoneColumn());
+  for(const [id,step] of [['previous-kanban-column',-1],['next-kanban-column',1]])$('#'+id).addEventListener('click',()=>{phoneColumn.selectedIndex+=step;showPhoneColumn();});
+  showPhoneColumn();
+  // Native creation forms count as dirty even when their dialogs are closed.
+  const formBaseline=new Map([...document.querySelectorAll('dialog form')].map(form=>[form,JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))]));
+  const otherEdits=()=>[...formBaseline].some(([form,value])=>JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))!==value);
+
   $('#manage-columns').addEventListener('click', () => {
     if (!canLeave()) return;
     dirty = false; $('#comment-body').value = '';
@@ -124,7 +144,7 @@
     const keepCommentRecovery = selected?.id === item.id && commentRecovery;
     itemRecovery?.dispose(); if (!keepCommentRecovery) commentRecovery?.dispose();
     window.recordLauncherVisit?.('kanban',item.id,'item');
-    selected = item; dirty = false;
+    selected = item; dirty = false; showPhoneColumn(item.column_id);
     title.value = item.title; notes.value = item.notes; column.value = item.column_id;
     $('#detail-heading').textContent = item.title;
     $('#detail-key').textContent = `ITEM #${item.id}`;
@@ -246,7 +266,7 @@
     try {
       const item = await api(id);
       if (request !== requestNumber) return;
-      fillDetail(item); updateCard(item); itemAddress(item.id); detailStatus(''); title.focus();
+      fillDetail(item); updateCard(item); itemAddress(item.id); detailStatus(''); if(matchMedia('(max-width:900px)').matches)$('#close-detail').focus();else title.focus();
     } catch (error) { if (request === requestNumber) detailStatus(error.message, true); }
   }
   function closeDetail() {
@@ -438,7 +458,7 @@
     else event.target.value = [...event.target.options].find((option) => option.defaultSelected)?.value || '';
   });
   document.querySelectorAll('.new-card form').forEach((newForm) => newForm.addEventListener('submit', (event) => { if (!canLeave()) event.preventDefault(); else dirty = false; }));
-  window.addEventListener('beforeunload', (event) => { if (dirty || saving || moving || commentSaving || $('#comment-body').value.trim()) { event.preventDefault(); event.returnValue = ''; } });
+  window.addEventListener('beforeunload', (event) => { if (dirty || saving || moving || commentSaving || $('#comment-body').value.trim() || otherEdits()) { event.preventDefault(); event.returnValue = ''; } });
   function renderEfforts(item) {
     $('#item-efforts-section').hidden = false;
     const options = $('#item-effort-options'); options.replaceChildren();
@@ -529,6 +549,12 @@
   search.addEventListener('input', updateCounts);
   $('#clear-kanban-search').addEventListener('click', () => { search.value = ''; updateCounts(); search.focus(); });
   updateCounts();
+  const workspaceDirty=()=>dirty||saving||moving||commentSaving||Boolean($('#comment-body').value.trim())||otherEdits()||Boolean(document.querySelector('dialog[open]'));
+  window.workspaceIsDirty=workspaceDirty;
+  window.WidgetDeckRuntime?.registerResume?.({id:'kanban-board',title:'Kanban board',host:$('#kanban-resume-host'),identity:()=>board.dataset.board,isDirty:workspaceDirty,
+    load:async({signal})=>{const response=await fetch(location.href,{signal,cache:'no-store'});if(!response.ok)throw new Error('Unable to read board');return response.text();},
+    apply:html=>{const incoming=new DOMParser().parseFromString(html,'text/html').querySelector('.kanban-board');if(!incoming||incoming.dataset.board!==board.dataset.board)throw new Error('Board unavailable');const url=new URL(location.href);if(search.value)url.searchParams.set('q',search.value);else url.searchParams.delete('q');url.searchParams.set('column',phoneColumn.value);history.replaceState(null,'',url);location.reload();}
+  });
   window.addEventListener('popstate',()=>{
     const params = new URLSearchParams(location.search), id=params.get('item');
     const effort=params.get('effort') || '';

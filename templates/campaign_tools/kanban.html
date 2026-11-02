@@ -7,10 +7,10 @@
   {% if boards %}<div class="kanban-toolbar"><label class="campaign-select">Board<select id="board-select">{% for board in boards %}<option value="{{ url_for('campaign_tools.kanban', board=board.id) }}" {% if selected and board.id == selected.id %}selected{% endif %}>{{ board.name }}</option>{% endfor %}</select></label></div>{% endif %}
   <p id="kanban-status" class="kanban-status" role="status" aria-live="polite"></p>
   {% if selected %}
-  <div class="kanban-search"><label for="kanban-search">Search this board</label><input id="kanban-search" type="search" placeholder="Title or #item number" autocomplete="off"><button id="clear-kanban-search" type="button" disabled>Clear search</button><span id="kanban-search-count" role="status" aria-live="polite"></span></div>
+  <details class="kanban-filters"><summary>Search and filter</summary><div class="kanban-search"><label for="kanban-search">Search this board</label><input id="kanban-search" type="search" placeholder="Title or #item number" autocomplete="off"><button id="clear-kanban-search" type="button" disabled>Clear search</button><span id="kanban-search-count" role="status" aria-live="polite"></span></div>
   <div class="kanban-effort-toolbar"><label for="effort-filter">Effort<select id="effort-filter" aria-label="Effort"><option value="">All efforts</option><option value="untagged">Untagged</option>{% for effort in efforts %}<option value="{{ effort.id }}">{{ effort.name }}</option>{% endfor %}</select></label><button id="clear-effort-filter" type="button" disabled>Clear effort filter</button></div>
-  <details id="effort-related" hidden><summary>Related items across boards</summary><ul id="effort-related-items"></ul></details>
-  <div class="kanban-workspace">
+  </details><details id="effort-related" hidden><summary>Related items across boards</summary><ul id="effort-related-items"></ul></details>
+  <nav class="kanban-phone-columns" aria-label="Board columns"><button type="button" id="previous-kanban-column" aria-label="Previous column">←</button><label>Column<select id="phone-kanban-column" aria-label="Column">{% for column in columns %}<option value="{{ column.id }}">{{ column.name }}</option>{% endfor %}</select></label><button type="button" id="next-kanban-column" aria-label="Next column">→</button></nav><div id="kanban-resume-host"></div><div class="kanban-workspace">
     <section class="kanban-board" data-board="{{ selected.id }}" aria-label="{{ selected.name }} board">
     {% for column in columns %}
       <section class="kanban-column" data-column="{{ column.id }}" aria-labelledby="column-{{ column.id }}">
@@ -24,18 +24,18 @@
           </article>
           {% endfor %}
         </div>
-        <dialog id="new-card-{{ column.id }}" class="campaign-dialog new-card" aria-labelledby="new-card-heading-{{ column.id }}"><h2 id="new-card-heading-{{ column.id }}">Add item to {{ column.name }}</h2><form method="post" autocomplete="off" action="{{ url_for('campaign_tools.kanban_add_item', board_id=selected.id) }}"><input type="hidden" name="column_id" value="{{ column.id }}"><label class="sr-only" for="new-title-{{ column.id }}">Item title</label><input id="new-title-{{ column.id }}" name="title" autocomplete="off" maxlength="160" placeholder="What needs to be done?" required><label class="sr-only" for="new-notes-{{ column.id }}">Notes</label><textarea id="new-notes-{{ column.id }}" name="notes" rows="3" maxlength="5000" placeholder="Notes (optional)"></textarea><div class="dialog-actions"><button class="primary">Add item</button><button type="button" data-close-dialog>Cancel</button></div></form></dialog>
+        <dialog id="new-card-{{ column.id }}" class="campaign-dialog new-card" aria-labelledby="new-card-heading-{{ column.id }}"><h2 id="new-card-heading-{{ column.id }}">Add item to {{ column.name }}</h2><form method="post" data-draft-form="kanban-new-item-{{ column.id }}" autocomplete="off" action="{{ url_for('campaign_tools.kanban_add_item', board_id=selected.id) }}"><input type="hidden" name="column_id" value="{{ column.id }}"><label class="sr-only" for="new-title-{{ column.id }}">Item title</label><input id="new-title-{{ column.id }}" name="title" autocomplete="off" maxlength="160" placeholder="What needs to be done?" required><label class="sr-only" for="new-notes-{{ column.id }}">Notes</label><textarea id="new-notes-{{ column.id }}" name="notes" rows="3" maxlength="5000" placeholder="Notes (optional)"></textarea><div class="dialog-actions"><button class="primary">Add item</button><button type="button" data-close-dialog>Cancel</button></div></form></dialog>
       </section>
     {% endfor %}
     </section>
     <aside id="kanban-detail" class="kanban-detail" aria-labelledby="detail-heading" hidden>
       <div class="detail-heading"><div><p class="eyebrow" id="detail-key">ITEM DETAILS</p><h2 id="detail-heading">Item details</h2></div><button type="button" id="close-detail" aria-label="Close item details">×</button></div>
-      <p id="detail-status" role="status" aria-live="polite"></p>
+      <div class="detail-save-row"><span id="item-save-state">All changes saved</span><button class="primary" id="save-item" form="item-edit-form">Save changes</button></div><p id="detail-status" role="status" aria-live="polite"></p>
       <form id="item-edit-form" autocomplete="off" hidden>
         <label for="item-title">Title<input id="item-title" name="item_title" autocomplete="off" maxlength="160" required></label>
         <label for="item-column">Status<select id="item-column">{% for column in columns %}<option value="{{ column.id }}">{{ column.name }}</option>{% endfor %}</select></label>
         <label for="item-notes">Notes<textarea id="item-notes" maxlength="5000" rows="10" placeholder="Add context, ideas, or next steps…"></textarea></label>
-        <div class="detail-save-row"><span id="item-save-state">All changes saved</span><button class="primary" id="save-item">Save changes</button></div>
+
       </form>
       <details id="item-metadata-section" class="item-disclosure" hidden><summary>Details</summary><div class="item-disclosure-content"><dl class="item-metadata"><div><dt>Created</dt><dd id="item-created"></dd></div><div><dt>Updated</dt><dd id="item-updated"></dd></div></dl></div></details>
       <fieldset id="item-efforts-section"><legend>Efforts</legend><div id="item-effort-options" class="effort-options"></div><p class="hint">Changes save automatically. Manage efforts from the board’s More menu.</p></fieldset>

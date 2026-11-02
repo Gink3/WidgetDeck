@@ -352,6 +352,7 @@ class KanbanBrowserTests(unittest.TestCase):
         page.reload()
         expect(column.get_by_role('button',name='Created through dialog',exact=False)).to_be_visible()
         page.set_viewport_size({'width':375,'height':900})
+        page.get_by_label('Column',exact=True).select_option(str(self.boards[0]['columns'][0]['id']))
         page.get_by_role('button',name='Add item to To do',exact=True).click()
         expect(page.get_by_role('dialog',name='Add item to To do',exact=True)).to_be_visible()
         self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),375)
