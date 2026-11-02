@@ -199,3 +199,17 @@ class RuntimeBrowserTests(unittest.TestCase):
             self.assertEqual(page.evaluate("fetch('/api/pwa-test/explicit-retry',{method:'POST'}).then(r=>r.status)"),200)
             self.assertEqual(self.probe_calls.count('explicit-retry'),1)
             context.close();browser.close()
+
+    def test_verified_session_identity_is_stable_and_changes_after_same_account_login(self):
+        from playwright.sync_api import sync_playwright
+        from browser_auth import auth_form
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();context=self.context(browser);page=context.new_page();page.goto(self.base+f'/tools/kanban?board={self.board}')
+            page.wait_for_function('WidgetDeckRuntime.state.verified')
+            initial=page.evaluate('WidgetDeckRuntime.state.sessionVersion');self.assertIsNotNone(initial)
+            page.evaluate('Promise.all([WidgetDeckRuntime.checkSession(),WidgetDeckRuntime.checkSession()])');self.assertEqual(page.evaluate('WidgetDeckRuntime.state.sessionVersion'),initial)
+            self.assertEqual(context.request.post(self.base+'/logout',max_redirects=0).status,302)
+            self.assertEqual(context.request.post(self.base+'/login',form={**auth_form(context.request,self.base),'username':self.username,'password':self.password},max_redirects=0).status,302)
+            # A session replacement is detected even without observing an expired interval.
+            page.evaluate('WidgetDeckRuntime.checkSession()');self.assertNotEqual(page.evaluate('WidgetDeckRuntime.state.sessionVersion'),initial)
+            self.assertTrue(page.evaluate('WidgetDeckRuntime.state.verified'));browser.close()

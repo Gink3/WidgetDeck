@@ -485,3 +485,9 @@ record, 20 records / 2 MiB per registered namespace). Writes refuse quota overfl
 without evicting live drafts. Explicit logout removes registered draft keys and
 retention metadata. Persistent libraries must not use this draft-only wrapper.
 Consumers require `core_api: ">=1.8,<2"`.
+
+Runtime `state.sessionVersion` (1.8) tracks the verified browser-session expiry
+identity. It changes after same-account re-login, without exposing session bearer
+credentials. Token-based widgets can compare the version associated with their
+CSRF token before a save: refresh the token on a changed session, retain a known
+valid token during auxiliary-read failures, and send the explicit mutation once.

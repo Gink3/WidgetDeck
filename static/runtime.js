@@ -3,7 +3,7 @@
   const owner = document.body.dataset.owner;
   if (!owner || !window.fetch) return;
   const nativeFetch = window.fetch.bind(window);
-  const state = { reachable: null, session: 'active', verified: false, saving: 0, failures: new Map(), accepted: false };
+  const state = { reachable: null, session: 'active', sessionVersion: null, verified: false, saving: 0, failures: new Map(), accepted: false };
   window.WidgetDeckRuntime = { state };
   const feedback = document.createElement('p');
   feedback.id = 'pwa-save-feedback'; feedback.hidden = true;
@@ -105,7 +105,8 @@
   };
 
   async function checkSession() {
-    if (document.hidden || checkInFlight) return;
+    if (document.hidden) return;
+    if (checkInFlight) return checkInFlight;
     state.verified = false;
     checkInFlight = (async () => {
       try {
@@ -117,9 +118,11 @@
         if (String(data.user_id) !== owner) { accountChanged(); return; }
         delete document.body.dataset.accountMismatch;
         const recovered = state.session !== 'active';
+        const version=Number.isFinite(data.expires_at)?data.expires_at:((state.sessionVersion??0)+(recovered?1:0));
+        const sessionChanged=state.sessionVersion!==null&&state.sessionVersion!==version;state.sessionVersion=version;
         state.session = 'active'; sessionNotice.hidden = true;
         state.verified = !document.hidden;
-        if (state.verified) window.dispatchEvent(new CustomEvent('widgetdeck:resume', { detail: { recovered } }));
+        if (state.verified) window.dispatchEvent(new CustomEvent('widgetdeck:resume', { detail: { recovered:recovered||sessionChanged } }));
       } catch (_) { reachable(false); }
     })();
     try { await checkInFlight; } finally { checkInFlight = null; }
