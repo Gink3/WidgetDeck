@@ -22,7 +22,7 @@ class MindMapPhoneBrowserTests(unittest.TestCase):
             page.set_viewport_size({'width':390,'height':360});panel.get_by_label('Notes',exact=True).focus();panel.get_by_role('button',name='Done',exact=True).tap();expect(panel).not_to_be_visible()
             expect(page.locator('.save-status')).to_be_visible();page.set_viewport_size({'width':390,'height':844})
             actions.get_by_role('button',name='Add sibling',exact=True).tap();expect(page.locator('.react-flow__node')).to_have_count(4)
-            page.get_by_text('Root',exact=True).tap();actions.get_by_role('button',name='Collapse',exact=True).tap();expect(page.locator('.react-flow__node')).to_have_count(2)
+            page.get_by_role('button',name=re.compile('^Fit view$',re.I)).tap();page.get_by_text('Root',exact=True).tap();actions.get_by_role('button',name='Collapse',exact=True).tap();expect(page.locator('.react-flow__node')).to_have_count(2)
             actions.get_by_role('button',name='Copy',exact=True).tap();actions.get_by_role('button',name='Paste',exact=True).tap()
             # Pasting includes hidden descendants and remaps node and edge IDs.
             expect(page.locator('.save-status')).to_have_text('Saved');saved=context.request.get(url).json()['map'];self.assertEqual(len(saved['nodes']),7);self.assertEqual(len(saved['edges']),4)
