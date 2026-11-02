@@ -235,19 +235,15 @@ def _validate_hierarchy(nodes, edges):
             raise ValueError("A node can have only one hierarchy parent.")
         parents[edge["target_id"]] = edge["source_id"]
         children[edge["source_id"]].append(edge["target_id"])
-    seen, visiting = set(), set()
-    def visit(node_id):
-        if node_id in visiting:
-            raise ValueError("Hierarchy edges cannot form a cycle.")
-        if node_id in seen:
-            return
-        visiting.add(node_id)
-        for child in children[node_id]:
-            visit(child)
-        visiting.remove(node_id)
-        seen.add(node_id)
-    for node in nodes:
-        visit(node["id"])
+    # A supported 1,000-node chain must not depend on Python's recursion limit.
+    roots = [node_id for node_id in children if node_id not in parents]
+    visited = 0
+    for node_id in roots:
+        visited += 1
+        roots.extend(children[node_id])
+    if visited != len(children):
+        raise ValueError("Hierarchy edges cannot form a cycle.")
+
 
 
 def _number(value):

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -46,7 +46,7 @@ import { EditorToolbar } from "./wiki-toolbar.jsx";
 import { usePhone } from './use-phone.mjs';
 import './wiki-phone.css';
 import { formatTableAt, editTableAt } from "./wiki-tables.mjs";
-import { WikiGraph } from "./wiki-graph.jsx";
+const WikiGraph=lazy(()=>import("./wiki-graph.jsx").then(module=>({default:module.WikiGraph})));
 import { Inbox } from "./wiki-inbox.jsx";
 import { storeDraft, recoverableDrafts, clearOwnerDrafts } from "./wiki-drafts.mjs";
 const emptyMetadata = {
@@ -701,7 +701,7 @@ function Library() {
           </div>
         </div>
       </div>
-      {showMap ? <WikiGraph /> : <>
+      {showMap ? <Suspense fallback={<p role="status">Loading page map…</p>}><WikiGraph /></Suspense> : <>
       <div className="wiki-search-controls">
         <input
           aria-label="Search"

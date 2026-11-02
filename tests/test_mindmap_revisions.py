@@ -44,3 +44,12 @@ class MindMapRevisionTests(unittest.TestCase):
         with patch.object(models,'_replace_graph',side_effect=RuntimeError('Independent write failure')):
             with self.assertRaises(RuntimeError):self.client.put(self.url,json={**self.payload,'name':'Must roll back','revision':0})
         self.assertEqual(self.client.get(self.url).json['map'],self.original)
+
+    def test_supported_thousand_node_chain_roundtrips_and_cycle_is_rejected(self):
+        nodes=[{'id':'chain-'+str(index),'title':'Node '+str(index),'x':index*2,'y':index*2} for index in range(1000)]
+        edges=[{'id':'link-'+str(index),'source_id':nodes[index-1]['id'],'target_id':nodes[index]['id'],'kind':'hierarchy','directed':True} for index in range(1,1000)]
+        created=self.client.post('/tools/mindmaps/api/maps',json={'name':'Deep supported map','nodes':nodes,'edges':edges})
+        self.assertEqual(created.status_code,201);url='/tools/mindmaps/api/maps/'+created.json['map']['id'];self.assertEqual(len(self.client.get(url).json['map']['nodes']),1000)
+        cyclic=[*edges,{'id':'cycle-link','source_id':nodes[-1]['id'],'target_id':nodes[0]['id'],'kind':'hierarchy','directed':True}]
+        self.assertEqual(self.client.put(url,json={'nodes':nodes,'edges':cyclic}).status_code,400)
+        self.assertEqual(len(self.client.get(url).json['map']['edges']),999)
