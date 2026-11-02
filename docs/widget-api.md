@@ -1,4 +1,4 @@
-# Widget API version 1.6
+# Widget API version 1.7
 
 Widgets are trusted executable server code. Capabilities describe enabled core
 services; they do not sandbox Python or prevent direct access to server resources.
@@ -449,3 +449,27 @@ stop this page's writes until the same account recovers its session. This API is
 for saved libraries, not draft cleanup or offline synchronization. Namespaces
 prevent cross-account app reads; they do not encrypt browser-origin storage or
 create a security boundary against code with access to that browser profile.
+
+## Safe foreground refresh (1.7)
+
+Authenticated pages expose `WidgetDeckRuntime.registerResume({id, title, host,
+load, apply, isDirty, identity, version, minAge})`. Required private consumers
+use `core_api: ">=1.7,<2"`. Register a stable widget ID after its initial read;
+re-registering disposes the previous handler. React callers should supply a
+separate ref-owned host for the coordinator's notice.
+
+`load({signal})` performs reads only and returns data without changing the editor.
+`apply(data)` synchronously applies that data. `isDirty()` includes unsaved values,
+pending writes, unresolved recovery and other work that a refresh could replace.
+`identity()` and `version()` identify the current resource and baseline. Refresh
+checks those guards before and after the read, coalesces repeated resume events,
+and aborts on disposal, expiry or account change. Its default staleness threshold
+is 30 seconds; a recovered session forces a check. The returned handle offers
+`refresh(force)`, `fresh()`, `cancel()` and `dispose()`.
+
+A dirty editor gets an explicit refresh notice. The coordinator never discards
+edits, submits mutations or retries failed writes. Failed reads wait for another
+resume or explicit retry. Cookie-based API mutations wait for the current session
+probe and require a verified matching account; hidden, expired, changed-account
+or unverifiable contexts cannot issue new writes. Blocked native submissions do
+not clear recovery or dirty-state tracking. Explicit retries remain user actions.

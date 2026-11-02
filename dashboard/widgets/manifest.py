@@ -8,7 +8,7 @@ from types import MappingProxyType
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
-API_VERSION = Version('1.6.0')
+API_VERSION = Version('1.7.0')
 SLUG = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)*\Z')
 ENTRY_POINT = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\Z')
 

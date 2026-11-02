@@ -126,3 +126,7 @@ body > header > #main-navigation { display:flex; min-height:64px; align-items:ce
 .draft-recovery button{margin:4px;min-height:44px}
 .draft-recovery textarea{width:100%;min-height:120px;font-size:16px}
 .draft-recovery[hidden],.draft-recovery [hidden]{display:none!important}
+.resume-refresh{padding:12px;margin:12px 0;background:var(--panel);border:1px solid var(--rule);border-radius:8px;overflow-wrap:anywhere}
+.resume-refresh[hidden]{display:none!important}
+.resume-refresh p{margin:0 0 8px}
+.resume-refresh button{min-height:44px;font-size:16px}
