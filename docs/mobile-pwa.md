@@ -110,3 +110,20 @@ session checks, the native Response/error, and unresolved save failures. It does
 not change the API, transmit a header, authorize work, or replay requests. Older
 shells without this observer simply ignore the extra fetch option. Widgets still
 provide their own action-specific progress, result and error messages.
+
+### Foreground refresh and interrupted saves
+
+Widget API 1.7 provides guarded foreground read/apply callbacks. Dirty edits,
+resource navigation, revision changes and pending writes prevent a delayed read
+from replacing the current editor. A session probe must verify the same account
+before any new cookie-based API write. Background/expired/unverifiable tabs retain
+recovery data and require explicit retry; returning to the app does not replay a
+failed mutation.
+
+Mind Maps automatically migrate older map databases to monotonic revisions.
+New clients send the expected revision for each serialized save; stale writes
+return 409 without changing metadata or graph rows. Legacy callers omitting a
+revision retain their previous supported behavior. Clean maps fetch current data
+on a stale/reauthenticated foreground return; dirty maps remain intact. Conflicts
+retain a local recovery/comparison copy and offer the saved version in another
+tab. A blocked/interrupted save has an explicit Retry save action.
