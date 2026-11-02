@@ -37,4 +37,7 @@ class MindMapPhoneBrowserTests(unittest.TestCase):
                 page.set_viewport_size(size);self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),size['width']);expect(page.locator('.save-status')).to_be_visible()
             page.screenshot(path='/artifacts/mind-phone-final.png');page.reload();expect(page.locator('.save-status')).to_have_text('Saved');self.assertEqual(len(context.request.get(url).json()['map']['nodes']),7)
             page.set_viewport_size({'width':1440,'height':1000});expect(page.locator('.detail-panel')).to_be_visible()
+            page.get_by_role('button',name=re.compile('^Fit view$',re.I)).click()
+            page.locator('.react-flow__node').filter(has_text='Root').first.click();page.locator('.react-flow__node').filter(has_text='Other').click(modifiers=['Control'])
+            expect(page.locator('.react-flow__node.selected')).to_have_count(2)
             self.assertEqual(errors,[]);browser.close()
