@@ -87,5 +87,6 @@ class ResumeBrowserTests(unittest.TestCase):
               dispatchEvent(new CustomEvent('widgetdeck:resume'));window.userDirty=false;
             }''')
             page.get_by_role('button',name='Refresh saved data',exact=True).click()
+            page.wait_for_function('window.applyCount>0')
             page.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
             self.assertEqual(page.evaluate('window.applyCount'),1);browser.close()

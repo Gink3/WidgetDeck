@@ -101,7 +101,9 @@ class MobileShellBrowserTests(unittest.TestCase):
                 if width <= 720:
                     page.locator('.new-card-button').first.wait_for(state='visible')
                     self.assertGreater(page.locator('.new-card-button').count(), 0)
-                    for button in page.locator('.new-card-button').all():
+                    for value in page.locator('#phone-kanban-column option').evaluate_all('items=>items.map(item=>item.value)'):
+                        page.locator('#phone-kanban-column').select_option(value)
+                        button=page.locator('.new-card-button:visible')
                         box = button.bounding_box()
                         self.assertGreaterEqual(box['height'], 44)
                         self.assertGreaterEqual(box['width'], 44)
