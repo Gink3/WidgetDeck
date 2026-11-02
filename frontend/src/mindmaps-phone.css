@@ -1,0 +1,32 @@
+.mind-detail-close,.mind-details-toggle{display:none}
+@media(max-width:900px){
+.mind-editor.mind-phone{position:fixed;top:calc(var(--mobile-viewport-top,0px) + 76px);left:0;right:0;height:calc(var(--mobile-viewport-height,100dvh) - 76px);min-height:0;z-index:10}
+.mind-phone .editor-toolbar{padding:4px 8px;gap:4px;align-items:center;flex-wrap:wrap;flex:none}
+.mind-phone .map-name{flex:1;min-width:80px;max-width:none;width:100px;font-size:16px}
+.mind-phone .save-status{display:block;white-space:normal;max-width:100%;font-size:12px}
+.mind-phone .tool-actions{width:100%;margin:0;overflow:visible;flex-wrap:wrap;gap:4px;justify-content:flex-start}
+.mind-phone .tool-actions>button,.mind-phone summary{padding:4px 8px;min-height:44px;min-width:44px}
+.mind-phone .tool-actions .workspace-more{margin-left:auto}
+.mind-phone .editor-body{display:block;position:relative;min-height:0}
+.mind-phone .canvas{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.mind-phone .canvas>.react-flow{flex:1;min-height:0}
+.mind-phone .mind-touch-actions{display:flex;flex:none;gap:4px;overflow-x:auto;white-space:nowrap;background:var(--panel);padding:4px}
+.mind-touch-actions button{flex:0 0 auto}
+.mind-touch-actions button,.mind-connect-prompt button{min-width:44px;min-height:44px;background:var(--panel);border:1px solid var(--rule);color:var(--ink);padding:6px}
+.mind-touch-actions button:disabled{opacity:.45}
+.mind-phone .detail-panel{display:none;position:absolute;inset:0;z-index:12;max-height:100%;border:0;padding:8px 12px;overflow:auto;overscroll-behavior:contain;scroll-padding:60px 8px 12px}
+.mind-phone .detail-panel.is-open{display:block}
+.mind-phone .mind-detail-close{display:block;position:sticky;top:0;z-index:2;margin:0 0 8px auto;background:var(--panel);border:1px solid var(--teal);color:var(--ink);min-height:44px;min-width:60px}
+.mind-phone .mind-details-toggle{display:inline-block}
+.mind-phone .node-detail{display:grid;grid-template-columns:1fr;gap:10px}
+.mind-phone .node-detail>*{grid-column:1!important}
+.mind-phone .node-detail textarea{height:100px}
+.mind-phone .settings-panel{display:grid}
+.mind-phone .react-flow__controls-button{width:44px;height:44px}
+.mind-phone .react-flow__controls-button svg{max-width:18px;max-height:18px}
+.mind-phone .node-collapse{display:none}
+.mind-phone .mind-handle{width:14px!important;height:14px!important}
+.mind-phone .editor-error{top:auto;bottom:4px;left:8px;right:8px;transform:none;max-height:50%;overflow:auto;z-index:30}
+.mind-phone .mind-connect-prompt{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px;background:var(--panel)}
+.mind-phone .mind-recovery-host:has(>details),.mind-phone .mind-resume-host:has(>*){max-height:30%;overflow:auto;flex-shrink:0}
+}
