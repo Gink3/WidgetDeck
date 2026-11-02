@@ -508,26 +508,28 @@ function Library() {
     [property, setProperty] = useState(""),
     [activity, setActivity] = useState([]);
   const macros = useMacros();
-  const sequence = useRef(0);
+  const sequence = useRef(0),resumeHost=useRef(null),libraryBusy=useRef(false);
+  libraryBusy.current=creating || importing || savedImporting || showImages;
+  const fetchLibrary=useCallback(async({signal}={})=>Promise.all([
+    api('/pages?'+new URLSearchParams({q:query,category,review:view,trash:view==='trash'?'1':'0'}),{signal,cache:'no-store'}),
+    api('/navigation',{signal,cache:'no-store'})
+  ]),[query,category,view]);
   const load = useCallback(async () => {
-    const seq = ++sequence.current;
+    const seq=++sequence.current;
     try {
-      const r = await api(
-        "/pages?" +
-          new URLSearchParams({
-            q: query,
-            category,
-            review: view,
-            trash: view === "trash" ? "1" : "0",
-          }),
-      );
-      if (seq === sequence.current) setPages(r.pages);
-      const shortcuts = await api("/navigation");
-      if (seq === sequence.current) setNavigation(shortcuts);
-    } catch (e) {
-      setError(e.message);
-    }
-  }, [query, category, view]);
+      const [r,shortcuts]=await fetchLibrary();
+      if(seq===sequence.current){setPages(r.pages);setNavigation(shortcuts);}
+    }catch(e){if(seq===sequence.current)setError(e.message);}
+  },[fetchLibrary]);
+  useEffect(()=>{
+    if(!resumeHost.current)return;
+    const registration=window.WidgetDeckRuntime?.registerResume?.({id:'wiki-library',title:'Wiki library',host:resumeHost.current,
+      identity:()=>[query,category,view],version:()=>sequence.current,
+      isDirty:()=>libraryBusy.current || Boolean(document.querySelector('.wiki-library dialog[open]')),
+      load:fetchLibrary,apply:([r,shortcuts])=>{sequence.current++;setPages(r.pages);setNavigation(shortcuts);setError('');}
+    });
+    return()=>registration?.dispose();
+  },[fetchLibrary,query,category,view]);
   useEffect(() => {
     const t = setTimeout(load, 180);
     return () => clearTimeout(t);
@@ -595,7 +597,7 @@ function Library() {
     e.target.value = "";
   }
   return (
-    <main className="wiki-library">
+    <main className="wiki-library"><div ref={resumeHost} className="wiki-resume-host" />
       {showImages && <ImageLibrary onClose={() => setShowImages(false)} />}
       <dialog ref={savedHtmlDialog} className="wiki-new-page-dialog" aria-labelledby="wiki-saved-html-title" onCancel={e => { if (savedImporting) e.preventDefault(); }}>
         <form onSubmit={async e => {
@@ -1034,6 +1036,7 @@ function Editor() {
     [unavailable, setUnavailable] = useState(null),
     [recovery, setRecovery] = useState([]),
     [localMessage, setLocalMessage] = useState("");
+  const resumeHost=useRef(null),resumeRef=useRef(null);
   const localKey = useRef(null),
     recoveredKeys = useRef([]);
   const [draftTab] = useState(() => newId());
@@ -1080,7 +1083,7 @@ function Editor() {
         }
         draft.current = baseline.current = r.page;
         setPage(r.page);
-        api(`/pages/${r.page.slug}/navigation`, { method: "POST" }).catch(e => setError(e.message));
+        api(`/pages/${r.page.slug}/navigation`, { method: "POST", widgetdeckOperation:"transient" }).catch(e => setError(e.message));
         setPages(index.pages);
         setStatus("Saved to server");
         try {
@@ -1093,6 +1096,25 @@ function Editor() {
       })
       .catch((e) => setError(e.message));
   }, [initialSlug]);
+  useEffect(()=>{
+    if(!page || !baseline.current || !resumeHost.current)return;
+    const registration=window.WidgetDeckRuntime?.registerResume?.({id:'wiki-editor',title:'Wiki page',host:resumeHost.current,
+      identity:()=>baseline.current?.id,version:()=>baseline.current?.revision,
+      isDirty:()=>Boolean(uploadBusy.current || inflight.current || recovery.length || returningToLibrary.current || document.querySelector('.wiki-editor dialog[open]')) || editable(draft.current)!==editable(baseline.current),
+      load:({signal})=>Promise.all([api('/resolve/'+baseline.current.slug,{signal,cache:'no-store'}),api('/index',{signal,cache:'no-store'})]),
+      apply:([r,index])=>{
+        setPages(index.pages);
+        if(r.state!=='active'){setUnavailable(r);return;}
+        const changed=editable(r.page)!==editable(baseline.current);
+        draft.current=baseline.current=r.page;setPage(r.page);
+        if(changed)textHistory.current={past:[],future:[],replay:false};
+        const url=new URL(location.href);url.pathname='/tools/wiki/'+r.page.slug;history.replaceState(history.state,'',url);
+        setError('');setStatus(changed?'Refreshed saved page':'Saved to server');
+      }
+    });
+    resumeRef.current=registration;
+    return()=>{registration?.dispose();if(resumeRef.current===registration)resumeRef.current=null;};
+  },[page?.id,recovery.length]);
   const refreshIndex = useCallback(async () => {
     setPages((await api("/index")).pages);
   }, []);
@@ -1162,7 +1184,7 @@ function Editor() {
           setPage(draft.current);
           history.replaceState(null, "", "/tools/wiki/" + saved.slug);
         }
-        setStatus("Saved to server");
+        setStatus("Saved to server");resumeRef.current?.fresh();
         try {
           if (localKey.current) localStorage.removeItem(localKey.current);
           for (const key of recoveredKeys.current) localStorage.removeItem(key);
@@ -1470,6 +1492,7 @@ function Editor() {
           </button></div></details>
         </div>
       </header>
+      <div ref={resumeHost} className="wiki-resume-host" />
       {error && (
         <div className="wiki-message" role="alert">
           {error} <button onClick={save}>Retry save</button>
