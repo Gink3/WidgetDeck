@@ -153,10 +153,32 @@
   document.querySelector('form.logout')?.addEventListener('submit', event => {
     if(event.defaultPrevented)return;
     active = false;
-    try { ownedKeys().forEach(key => localStorage.removeItem(key)); cleanup.forEach(callback=>{try{callback();}catch(_){}}); }
+    try { ownedKeys().forEach(key => localStorage.removeItem(key));
+      for(const store of [localStorage,sessionStorage]){
+        const metadataKeys=Array.from({length:store.length},(_,i)=>store.key(i)).filter(key=>key?.startsWith('widgetdeck.draft-retention.'+owner+'.'));
+        for(const key of metadataKeys){try{const descriptors=decodeURIComponent(key.slice(('widgetdeck.draft-retention.'+owner+'.').length)).split(':').slice(1).join(':').split('|');const times=JSON.parse(store.getItem(key));for(const draftKey of Object.keys(times))if(descriptors.some(prefix=>prefix.includes(owner)&&(draftKey===prefix||(/[.:]$/.test(prefix)&&draftKey.startsWith(prefix)))))store.removeItem(draftKey);store.removeItem(key);}catch(_){}}
+      }
+      cleanup.forEach(callback=>{try{callback();}catch(_){}}); }
     catch (_) { /* Do not block signing out if storage was disabled. */ }
     try { Array.from({length:sessionStorage.length},(_,i)=>sessionStorage.key(i)).filter(key=>key?.startsWith(receiptPrefix)).forEach(key=>sessionStorage.removeItem(key)); }catch(_){}
   });
-  window.WidgetDeckDrafts = {create, bindForm, onLogout(callback) {cleanup.add(callback); return ()=>cleanup.delete(callback);}, limits:{ttl,maxRecord,maxTotal,maxRecords}};
+  // Keep supported older draft bytes intact; store retention metadata separately.
+  // Callers supply only prefixes that already include the verified account ID.
+  function storage({prefixes,area='local'}) {
+    if(!Array.isArray(prefixes)||!prefixes.length||prefixes.some(value=>typeof value!=='string'||!value.includes(owner)))throw new Error('Account-scoped draft prefixes required.');
+    const store=area==='session'?sessionStorage:localStorage;
+    const metaKey='widgetdeck.draft-retention.'+owner+'.'+encodeURIComponent(area+':'+prefixes.join('|'));
+    const matches=key=>prefixes.some(value=>key===value||(/[.:]$/.test(value)&&key.startsWith(value)));
+    const keys=()=>Array.from({length:store.length},(_,i)=>store.key(i)).filter(key=>key&&matches(key));
+    const metadata=()=>{const raw=store.getItem(metaKey);if(!raw)return {};const value=JSON.parse(raw);if(!value||Array.isArray(value)||typeof value!=='object')throw new Error('Draft retention data is damaged.');return value;};
+    function prune(){const times=metadata(),now=Date.now();let changed=false;for(const key of keys()){if(!Number.isFinite(times[key])){times[key]=now;changed=true;}else if(times[key]<now-ttl){store.removeItem(key);delete times[key];changed=true;}}if(changed)store.setItem(metaKey,JSON.stringify(times));return times;}
+    cleanup.add(()=>{keys().forEach(key=>store.removeItem(key));store.removeItem(metaKey);});
+    return {
+      getItem(key){if(!matches(key))throw new Error('Draft key outside account scope.');try{prune();}catch(_){}return store.getItem(key);},
+      setItem(key,raw){if(!active||!matches(key))throw new Error('Draft account is unavailable.');raw=String(raw);const times=prune(),others=keys().filter(value=>value!==key);if(raw.length*2>maxRecord||others.length>=maxRecords||others.reduce((size,key)=>size+(store.getItem(key)?.length||0)*2,0)+raw.length*2>maxTotal)throw new Error('Draft storage is full; existing copies were kept.');store.setItem(key,raw);times[key]=Date.now();store.setItem(metaKey,JSON.stringify(times));},
+      removeItem(key){if(matches(key)){store.removeItem(key);const times=metadata();delete times[key];store.setItem(metaKey,JSON.stringify(times));}}
+    };
+  }
+  window.WidgetDeckDrafts = {create, bindForm, storage, onLogout(callback) {cleanup.add(callback); return ()=>cleanup.delete(callback);}, limits:{ttl,maxRecord,maxTotal,maxRecords}};
   document.querySelectorAll('form[data-draft-form]:not([data-draft-custom])').forEach(form=>bindForm(form));
 })();

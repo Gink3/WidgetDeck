@@ -1,4 +1,4 @@
-# Widget API version 1.7
+# Widget API version 1.8
 
 Widgets are trusted executable server code. Capabilities describe enabled core
 services; they do not sandbox Python or prevent direct access to server resources.
@@ -473,3 +473,15 @@ resume or explicit retry. Cookie-based API mutations wait for the current sessio
 probe and require a verified matching account; hidden, expired, changed-account
 or unverifiable contexts cannot issue new writes. Blocked native submissions do
 not clear recovery or dirty-state tracking. Explicit retries remain user actions.
+
+## Existing draft retention (1.8)
+
+`WidgetDeckDrafts.storage({prefixes, area: 'local'})` wraps older account-scoped
+draft formats without changing their bytes. Supply prefixes containing the owner
+ID and use the returned `getItem`, `setItem` and `removeItem`. `area: 'session'`
+uses sessionStorage. Seven-day retention starts at first encounter for older
+records; writes update the timestamp. Limits match shared drafts (512 KiB per
+record, 20 records / 2 MiB per registered namespace). Writes refuse quota overflow
+without evicting live drafts. Explicit logout removes registered draft keys and
+retention metadata. Persistent libraries must not use this draft-only wrapper.
+Consumers require `core_api: ">=1.8,<2"`.

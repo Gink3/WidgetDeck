@@ -141,3 +141,22 @@ class DraftRecoveryBrowserTests(unittest.TestCase):
             expect(page.locator('#text')).to_have_value('')
             page.evaluate('window.recoveryAllowed=true');page.get_by_role('button',name='Restore draft',exact=True).click()
             expect(page.locator('#text')).to_have_value('Keep this draft');browser.close()
+
+    def test_legacy_draft_bytes_are_bounded_expire_and_clear_on_logout(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();page=browser.new_page();self.editor(page)
+            result=page.evaluate('''()=>{
+              const key='old-draft.A.one',raw='{"text":"legacy draft"}';localStorage.setItem(key,raw);
+              const store=WidgetDeckDrafts.storage({prefixes:['old-draft.A.']});
+              const preserved=store.getItem(key)===raw;
+              const meta=Object.keys(localStorage).find(k=>k.startsWith('widgetdeck.draft-retention.A.'));
+              const times=JSON.parse(localStorage.getItem(meta));times[key]=Date.now()-8*86400000;localStorage.setItem(meta,JSON.stringify(times));
+              const expired=store.getItem(key)===null;store.setItem(key,raw);
+              let refused=false;try{store.setItem('old-draft.A.too-large','x'.repeat(300000));}catch(_){refused=true;}
+              localStorage.setItem('old-draft.B.one','other account');localStorage.setItem('library.A','saved library');
+              document.querySelector('form.logout').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+              return {preserved,expired,refused,removed:localStorage.getItem(key)===null,other:localStorage.getItem('old-draft.B.one'),library:localStorage.getItem('library.A')};
+            }''')
+            self.assertEqual(result,{'preserved':True,'expired':True,'refused':True,'removed':True,'other':'other account','library':'saved library'})
+            browser.close()

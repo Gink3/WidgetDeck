@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, API } from "./wiki-api.mjs";
 import { DocumentViewer } from "./wiki-reading.jsx";
 import "./wiki-inbox.css";
 
 export function Inbox() {
+  const inboxStorage=useMemo(()=>window.WidgetDeckDrafts.storage({prefixes:['wiki-inbox:'+document.body.dataset.owner],area:'session'}),[]);
   const [width, setWidth] = useState(390);
   const [owner, setOwner] = useState(null), [open, setOpen] = useState(false);
   const [notes, setNotes] = useState([]), [note, setNote] = useState(null);
@@ -18,7 +19,7 @@ export function Inbox() {
   const key = owner ? `wiki-inbox:${owner}` : null;
   function remember(values) {
     if (!key) return;
-    try { sessionStorage.setItem(key, JSON.stringify({ ...JSON.parse(sessionStorage.getItem(key) || "{}"), ...values })); } catch { /* Server data remains available. */ }
+    try { inboxStorage.setItem(key, JSON.stringify({ ...JSON.parse(inboxStorage.getItem(key) || "{}"), ...values })); } catch { /* Server data remains available. */ }
   }
   function resize(value) {
     const next = Math.min(600, Math.max(300, value));
@@ -38,7 +39,7 @@ export function Inbox() {
     api("/inbox").then(async result => {
       setOwner(result.owner_id);
       let saved = {};
-      try { saved = JSON.parse(sessionStorage.getItem(`wiki-inbox:${result.owner_id}`) || "{}"); } catch {}
+      try { saved = JSON.parse(inboxStorage.getItem(`wiki-inbox:${result.owner_id}`) || "{}"); } catch {}
       setOpen(!!saved.open);
       if (Number.isFinite(saved.width)) setWidth(Math.min(600, Math.max(300, saved.width)));
       setCapture(saved.capture || "");
