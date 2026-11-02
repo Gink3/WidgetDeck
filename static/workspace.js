@@ -1,10 +1,11 @@
 (() => {
-  const dirtyForms=new Set();
+  const dirtyForms=new Set();let nativeSubmitting=false;
+  window.workspaceIsDirty=()=>Boolean(dirtyForms.size)||nativeSubmitting;
   window.workspaceCanLeave=()=>!dirtyForms.size||confirm('Discard unsaved changes to this workspace?');
   document.querySelectorAll('.campaign-tool:not(.kanban-page) form,dialog.campaign-dialog:not(#new-deck-dialog) form').forEach(form=>{
     const state=document.createElement('p');state.className='workspace-save-status';state.setAttribute('role','status');state.setAttribute('aria-live','polite');state.textContent=form.classList.contains('character-card')||form.querySelector('[name=reference_notes]')?'All changes saved':'Ready';form.append(state);
     form.addEventListener('input',()=>{dirtyForms.add(form);state.textContent='Unsaved changes';});
-    form.addEventListener('submit',event=>{if(event.defaultPrevented)return;dirtyForms.delete(form);state.textContent='Saving…';});
+    form.addEventListener('submit',event=>{if(event.defaultPrevented)return;dirtyForms.delete(form);nativeSubmitting=true;state.textContent='Saving…';});
     form.closest('dialog')?.addEventListener('close',()=>{dirtyForms.delete(form);});
   });
   window.addEventListener('beforeunload',event=>{if(dirtyForms.size){event.preventDefault();event.returnValue='';}});
@@ -49,6 +50,21 @@
     window.addEventListener('workspace:selected',()=>{workspace.classList.remove('mobile-browsing');workspace.classList.add('mobile-editing');});
     if(innerWidth<=720)workspace.classList.add('mobile-browsing');
   });
+  if(main?.matches('.campaign-tool:not(.kanban-page)') && /\/(rdt|roguelike-death-tracker|frostgrave)(?:\/|$)/.test(location.pathname)){
+    const host=document.createElement('div');main.prepend(host);
+    const previous=history.state?.widgetdeckNativeResume;
+    if(previous?.owner===owner&&previous.url===location.href&&Date.now()-previous.at<30000){
+      const state={...history.state};delete state.widgetdeckNativeResume;history.replaceState(state,'',location.href);
+      const restorePresentation=()=>{document.querySelectorAll('details:not(.workspace-more)').forEach((item,index)=>{if(previous.open.includes(index))item.open=true;});
+      if(previous.view)document.querySelector('[data-run-view="'+previous.view+'"]')?.click();
+      requestAnimationFrame(()=>window.scrollTo(previous.x,previous.y));};
+      if(document.readyState==='complete')restorePresentation();else window.addEventListener('load',restorePresentation,{once:true});
+    }
+    window.WidgetDeckRuntime?.registerResume({id:'native-campaign',title:'Saved campaign',host,isDirty:()=>window.workspaceIsDirty()||Boolean(document.querySelector('dialog[open]')),identity:()=>location.href,
+      load:async({signal})=>{const response=await fetch(location.href,{signal,cache:'no-store'});if(!response.ok)throw new Error('Unable to refresh campaign');const text=await response.text(),doc=new DOMParser().parseFromString(text,'text/html');if(doc.body.dataset.owner!==owner||!doc.querySelector('main.campaign-tool'))throw new Error('Campaign is unavailable.');return true;},
+      apply:()=>{history.replaceState({...history.state,widgetdeckNativeResume:{owner,url:location.href,at:Date.now(),x:scrollX,y:scrollY,open:[...document.querySelectorAll('details:not(.workspace-more)')].flatMap((item,index)=>item.open?[index]:[]),view:document.querySelector('[data-run-view][aria-pressed=true]')?.dataset.runView}},'',location.href);location.reload();}
+    });
+  }
   document.querySelectorAll('.tool-heading>a[download]').forEach(link=>{const more=document.createElement('details');more.className='workspace-more';const summary=document.createElement('summary');summary.textContent='More';const menu=document.createElement('div');link.replaceWith(more);menu.append(link);more.append(summary,menu);});
 })();
 
