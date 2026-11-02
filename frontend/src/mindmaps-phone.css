@@ -1,6 +1,6 @@
 .mind-detail-close,.mind-details-toggle{display:none}
 @media(max-width:900px){
-.mind-editor.mind-phone{position:fixed;top:calc(var(--mobile-viewport-top,0px) + 76px);left:0;right:0;height:calc(var(--mobile-viewport-height,100dvh) - 76px);min-height:0;z-index:10}
+.mind-editor.mind-phone{position:fixed;top:calc(var(--mobile-viewport-top,0px) + var(--mind-site-header-height,76px));left:0;right:0;height:calc(var(--mobile-viewport-height,100dvh) - var(--mind-site-header-height,76px));min-height:0;z-index:10}
 .mind-phone .editor-toolbar{padding:4px 8px;gap:4px;align-items:center;flex-wrap:wrap;flex:none}
 .mind-phone .map-name{flex:1;min-width:80px;max-width:none;width:100px;font-size:16px}
 .mind-phone .save-status{display:block;white-space:normal;max-width:100%;font-size:12px}
@@ -30,3 +30,5 @@
 .mind-phone .mind-connect-prompt{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px;background:var(--panel)}
 .mind-phone .mind-recovery-host:has(>details),.mind-phone .mind-resume-host:has(>*){max-height:30%;overflow:auto;flex-shrink:0}
 }
+
+@media(max-width:900px){body.mind-short-viewport>header{display:none}}

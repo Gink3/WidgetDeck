@@ -138,11 +138,23 @@ function Editor() {
   const [measured,setMeasured]=useState({});
   const phone=usePhone(),[detailsOpen,setDetailsOpen]=useState(false),[connecting,setConnecting]=useState(null),[clipboardReady,setClipboardReady]=useState(false);
   const closeDetails=()=>{setDetailsOpen(false);document.querySelector('.mind-details-toggle')?.focus();};
+  useEffect(()=>{
+    if(!phone)return;
+    const header=document.querySelector('body>header');
+    const size=()=>{const height=Math.abs((visualViewport?.scale||1)-1)<.01?(visualViewport?.height||innerHeight):innerHeight;document.body.classList.toggle('mind-short-viewport',height<500);root.style.setProperty('--mind-site-header-height',(header?.getBoundingClientRect().height||0)+'px');};
+    const observer=new ResizeObserver(size);if(header)observer.observe(header);visualViewport?.addEventListener('resize',size);window.addEventListener('resize',size);size();
+    return()=>{observer.disconnect();visualViewport?.removeEventListener('resize',size);window.removeEventListener('resize',size);document.body.classList.remove('mind-short-viewport');root.style.removeProperty('--mind-site-header-height');};
+  },[phone]);
   const [publishing,setPublishing]=useState(false),publishingRef=useRef(false);
   const [mapId, setMapId] = useState(initialId); const [graph, setGraph] = useState(null); const [selection, setSelection] = useState({ nodes: [], edges: [] }); const [search, setSearch] = useState(''); const [revealed, setRevealed] = useState(new Set()); const [connectKind, setConnectKind] = useState('hierarchy'); const [status, setStatus] = useState('Loading…'); const [error, setError] = useState(''); const [settings, setSettings] = useState({ minimap: true, grid: true, snap: false, default_node_type: 'idea' }); const [settingsOpen, setSettingsOpen] = useState(root.dataset.openSettings === 'true'); const [context, setContext] = useState(null); const [flow, setFlow] = useState(null);
   useEffect(()=>{if(settingsOpen)setDetailsOpen(true);},[settingsOpen]);
   useEffect(()=>{if(!mapId||mapId==='new')return;try{const key='dashboard.workspace.last.v1.'+document.body.dataset.owner,last=JSON.parse(localStorage.getItem(key)||'{}');last['/tools/mindmaps']=mapId;localStorage.setItem(key,JSON.stringify(last));}catch(_){}},[mapId]);
   useEffect(()=>{if(mapId&&mapId!=='new')window.recordLauncherVisit?.('mind-maps',mapId);},[mapId]);
+  useEffect(()=>{
+    if(!phone||!flow)return;
+    const canvas=root.querySelector('.react-flow');if(!canvas)return;let prior=canvas.getBoundingClientRect();
+    const observer=new ResizeObserver(()=>{const next=canvas.getBoundingClientRect();if(prior.width&&prior.height&&next.width&&next.height&&(prior.width!==next.width||prior.height!==next.height)){const viewport=flow.getViewport();flow.setViewport({...viewport,x:viewport.x+(next.width-prior.width)/2,y:viewport.y+(next.height-prior.height)/2});}prior=next;});observer.observe(canvas);return()=>observer.disconnect();
+  },[phone,flow]);
   const savedFingerprint=useRef(''),saveQueue=useRef(Promise.resolve()),savingRef=useRef(false),serverRevision=useRef(null),conflictRef=useRef(false),resumeRef=useRef(null),resumeHost=useRef(null);
   const [conflict,setConflict]=useState(false),[saveAttempt,setSaveAttempt]=useState(0);
   const fingerprint=mapFingerprint;
