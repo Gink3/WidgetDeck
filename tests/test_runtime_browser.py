@@ -213,3 +213,29 @@ class RuntimeBrowserTests(unittest.TestCase):
             # A session replacement is detected even without observing an expired interval.
             page.evaluate('WidgetDeckRuntime.checkSession()');self.assertNotEqual(page.evaluate('WidgetDeckRuntime.state.sessionVersion'),initial)
             self.assertTrue(page.evaluate('WidgetDeckRuntime.state.verified'));browser.close()
+
+    def test_pending_owner_check_allows_local_forms_but_blocks_native_posts(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();context=self.context(browser);page=context.new_page();page.goto(self.base+'/')
+            page.wait_for_function('WidgetDeckRuntime.state.verified')
+            pending=[];page.route('**/api/session',lambda r:pending.append(r))
+            with page.expect_request('**/api/session'):page.evaluate('WidgetDeckRuntime.checkSession();void 0')
+            page.evaluate('''()=>{
+              window.localSubmits=0;window.nativeSubmits=0;
+              for(const [id,method]of [['local-fixture','get'],['native-fixture','post']]){
+                const form=document.createElement('form');form.id=id;form.method=method;
+                const field=document.createElement('input');field.name='text';field.value='Keep this local reference';form.append(field);
+                if(method==='post')for(const name of ['method','getAttribute']){const named=document.createElement('input');named.name=name;named.value='get';form.append(named);}
+                form.addEventListener('submit',event=>{event.preventDefault();if(id==='local-fixture')localSubmits++;else nativeSubmits++;});document.body.append(form);
+              }
+              document.getElementById('local-fixture').requestSubmit();document.getElementById('native-fixture').requestSubmit();
+              const button=document.createElement('button');button.type='submit';button.setAttribute('formmethod','post');document.getElementById('local-fixture').append(button);document.getElementById('local-fixture').requestSubmit(button);
+            }''')
+            self.assertEqual(page.evaluate('[localSubmits,nativeSubmits]'),[1,0])
+            self.assertEqual(page.locator('#local-fixture input').input_value(),'Keep this local reference')
+            pending[0].fulfill(status=503,json={'error':'Pending owner proof failed'})
+            page.unroute('**/api/session');page.evaluate('WidgetDeckRuntime.checkSession()');page.wait_for_function('WidgetDeckRuntime.state.verified')
+            self.assertEqual(page.evaluate('[localSubmits,nativeSubmits]'),[1,0])
+            page.evaluate("document.getElementById('native-fixture').requestSubmit()")
+            self.assertEqual(page.evaluate('nativeSubmits'),1);browser.close()

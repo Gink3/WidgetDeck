@@ -129,6 +129,9 @@
   }
   window.WidgetDeckRuntime.checkSession = checkSession;
   document.addEventListener('submit', event => {
+    const method=event.submitter?.getAttribute('formmethod')||Element.prototype.getAttribute.call(event.target,'method')||'GET';
+    // Client-only/GET forms can update local drafts; fetch still gates API writes.
+    if(method.toUpperCase()!=='POST')return;
     if (state.session === 'active' && state.verified && !document.body.dataset.accountMismatch) return;
     event.preventDefault();
     event.stopImmediatePropagation();
