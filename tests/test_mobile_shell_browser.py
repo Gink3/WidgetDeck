@@ -90,7 +90,9 @@ class MobileShellBrowserTests(unittest.TestCase):
         from playwright.sync_api import sync_playwright
         client = self.app.test_client()
         auth_post(client, '/register', {'username': 'mobile-shell', 'password': 'test-only-password'})
-        client.post('/tools/kanban', data={'name': 'Phone board'})
+        created = client.post('/tools/kanban', data={'name': 'Phone board'})
+        self.assertEqual(created.status_code, 302)
+        board_url = created.headers['Location']
         with sync_playwright() as pw:
             browser = pw.chromium.launch()
             for width in (320, 390, 1440):
@@ -98,7 +100,7 @@ class MobileShellBrowserTests(unittest.TestCase):
                 context.add_cookies([{'name': 'dashboard_session',
                                      'value': client.get_cookie('dashboard_session').value, 'url': self.base}])
                 page = context.new_page()
-                page.goto(self.base + '/tools/kanban?board=1')
+                page.goto(self.base + board_url)
                 if width <= 720:
                     page.locator('.new-card-button').first.wait_for(state='visible')
                     self.assertGreater(page.locator('.new-card-button').count(), 0)
@@ -163,11 +165,12 @@ class MobileShellBrowserTests(unittest.TestCase):
     def test_ajax_column_manager_does_not_claim_a_native_form_save(self):
         from playwright.sync_api import sync_playwright,expect
         client=self.app.test_client();auth_post(client,'/register',{'username':'native-feedback','password':'fixture-only-password'})
-        client.post('/tools/kanban',data={'name':'Feedback board'})
+        created=client.post('/tools/kanban',data={'name':'Feedback board'})
+        self.assertEqual(created.status_code,302);board_url=created.headers['Location']
         with sync_playwright() as pw:
             browser=pw.chromium.launch();context=browser.new_context(viewport={'width':390,'height':844})
             context.add_cookies([{'name':'dashboard_session','value':client.get_cookie('dashboard_session').value,'url':self.base}])
-            page=context.new_page();page.goto(self.base+'/tools/kanban?board=1')
+            page=context.new_page();page.goto(self.base+board_url)
             page.locator('.kanban-column-tools summary').click();page.locator('#manage-columns').click()
             expect(page.locator('#column-manager .workspace-save-status')).to_have_count(0)
             page.locator('#column-name').fill('Review')
