@@ -74,6 +74,7 @@ class MobileShellBrowserTests(unittest.TestCase):
             page.get_by_role('button', name='+ New board', exact=True).click()
             dialog = page.locator('#new-kanban')
             expect(dialog).to_be_visible()
+            expect(dialog).to_have_accessible_name('New Kanban board')
             # Exercise a small available viewport; real iOS keyboard remains a device check.
             page.set_viewport_size({'width': 390, 'height': 320})
             expect(page.locator('html')).to_have_css('--mobile-viewport-height', '320px')

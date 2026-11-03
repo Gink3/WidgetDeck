@@ -1,6 +1,13 @@
 /* Use the right on-screen keyboard without changing existing form values/types. */
 (() => {
+  let dialogHeading=0;
   function prepare(root) {
+    // Native dialogs need an explicit name; retain names supplied by widgets.
+    for(const dialog of root.querySelectorAll('dialog:not([aria-label]):not([aria-labelledby]):not([title])')){
+      const heading=dialog.querySelector('h1,h2,h3');if(!heading)continue;
+      if(!heading.id){do{dialogHeading++;}while(document.getElementById('mobile-dialog-heading-'+dialogHeading));heading.id='mobile-dialog-heading-'+dialogHeading;}
+      dialog.setAttribute('aria-labelledby',heading.id);
+    }
     const fields = root.querySelectorAll('input[type="number"]:not([inputmode])');
     for (const field of fields) {
       field.inputMode = field.step === 'any' || (field.step && !Number.isInteger(Number(field.step)))
