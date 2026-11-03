@@ -3,6 +3,8 @@
   window.workspaceIsDirty=()=>Boolean(dirtyForms.size)||nativeSubmitting;
   window.workspaceCanLeave=()=>!dirtyForms.size||confirm('Discard unsaved changes to this workspace?');
   document.querySelectorAll('.campaign-tool:not(.kanban-page) form,dialog.campaign-dialog:not(#new-deck-dialog) form').forEach(form=>{
+    // AJAX/local forms own their feedback; only native POSTs navigate to a save result.
+    if(Element.prototype.getAttribute.call(form,'method')?.toUpperCase()!=='POST')return;
     const state=document.createElement('p');state.className='workspace-save-status';state.setAttribute('role','status');state.setAttribute('aria-live','polite');state.textContent=form.classList.contains('character-card')||form.querySelector('[name=reference_notes]')?'All changes saved':'Ready';form.append(state);
     form.addEventListener('input',()=>{dirtyForms.add(form);state.textContent='Unsaved changes';});
     form.addEventListener('submit',event=>{if(event.defaultPrevented)return;dirtyForms.delete(form);nativeSubmitting=true;state.textContent='Saving…';});

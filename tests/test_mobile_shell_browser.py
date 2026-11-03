@@ -159,3 +159,23 @@ class MobileShellBrowserTests(unittest.TestCase):
             expect(page.get_by_role('link', name='Settings', exact=True)).to_be_visible()
             context.close()
             browser.close()
+
+    def test_ajax_column_manager_does_not_claim_a_native_form_save(self):
+        from playwright.sync_api import sync_playwright,expect
+        client=self.app.test_client();auth_post(client,'/register',{'username':'native-feedback','password':'fixture-only-password'})
+        client.post('/tools/kanban',data={'name':'Feedback board'})
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();context=browser.new_context(viewport={'width':390,'height':844})
+            context.add_cookies([{'name':'dashboard_session','value':client.get_cookie('dashboard_session').value,'url':self.base}])
+            page=context.new_page();page.goto(self.base+'/tools/kanban?board=1')
+            page.locator('.kanban-column-tools summary').click();page.locator('#manage-columns').click()
+            expect(page.locator('#column-manager .workspace-save-status')).to_have_count(0)
+            page.locator('#column-name').fill('Review')
+            page.route('**/api/tools/kanban/boards/*/columns',lambda route:route.fulfill(status=503,json={'error':'Fixture column failure'}))
+            page.locator('#add-column-form button').click();expect(page.locator('#column-manager-status')).to_have_text('Fixture column failure')
+            expect(page.locator('#column-manager .workspace-save-status')).to_have_count(0)
+            expect(page.locator('#column-name')).to_have_value('Review')
+            page.unroute('**/api/tools/kanban/boards/*/columns')
+            with page.expect_navigation():page.locator('#add-column-form button').click()
+            expect(page.locator('#phone-kanban-column')).to_contain_text('Review')
+            browser.close()
