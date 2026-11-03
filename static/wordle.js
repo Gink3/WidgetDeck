@@ -4,14 +4,22 @@
   const input = $('#wordle-guess');
   const play = $('#wordle-play');
   const lengthSelect = $('#wordle-length');
-  let game = null, csrf = '', busy = false;
+  let game = null, csrf = '', tokenVersion=null, busy = false;
   const status = message => { $('#wordle-status').textContent = message; };
-  async function api(path, body) {
-    const response = await fetch('/api/tools/wordle/' + path, body === undefined ? {} : {
+  async function api(path, body, {signal}={}) {
+    let identity;
+    if(path==='game'||body!==undefined){
+      await window.WidgetDeckRuntime?.checkSession?.();identity=window.WidgetDeckRuntime?.state.sessionVersion;
+    }
+    if(body!==undefined&&(tokenVersion===null||identity==null||tokenVersion!==identity)){
+      const proof=await api('game');csrf=proof.csrf_token;tokenVersion=proof.widgetdeckSessionVersion;
+    }
+    const response = await fetch('/api/tools/wordle/' + path, body === undefined ? {signal} : {
       method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRF-Token':csrf}, body:JSON.stringify(body)
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Unable to save your game.');
+    if(path==='game')data.widgetdeckSessionVersion=identity;
     return data;
   }
   function controls() {
@@ -49,7 +57,7 @@
   });
   input.addEventListener('input', draft);
   function render(data) {
-    game = data.game; if (data.csrf_token) csrf = data.csrf_token;
+    game = data.game; if (data.csrf_token){csrf = data.csrf_token;tokenVersion=data.widgetdeckSessionVersion;}
     // Initialize the next-game settings from a saved game when it is loaded. Keep
     // later user changes while guesses update the current game.
     if (game && !render.settingsInitialized) {
@@ -122,6 +130,12 @@
     try { const data = await api(`games/${game.id}/guesses`,{word:input.value,revision:game.revision});input.value = '';render(data); }
     catch(error) { status(error.message); }
     finally { busy = false;controls();if (!input.disabled) play.focus({preventScroll:true}); }
+  });
+  window.workspaceIsDirty=()=>busy||Boolean(input.value);
+  window.WidgetDeckRuntime?.registerResume?.({id:'wordle',title:'Wordle game',host:$('.wordle-page'),
+    isDirty:()=>!csrf||window.workspaceIsDirty(),identity:()=>game?.id||'',
+    version:()=>[game?.revision,input.value,lengthSelect.value,$('#wordle-hard').checked],
+    load:({signal})=>api('game',undefined,{signal}),apply:render
   });
   controls();load();
 })();
