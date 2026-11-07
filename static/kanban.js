@@ -79,9 +79,10 @@
   if ([...effortFilter.options].some(o => o.value === initialEffort)) effortFilter.value = initialEffort;
   const showOlderDone=$('#show-older-done');
   const olderDone=card=>Boolean(card.dataset.completedAt)&&Date.parse(card.dataset.completedAt)<=Date.now()-7*24*60*60*1000;
-  const hiddenOlder=()=>!showOlderDone.checked&&!search.value.trim()&&[...board.querySelectorAll('.kanban-card')].some(olderDone);
+  const showingOlderDone=()=>showOlderDone.getAttribute('aria-pressed')==='true';
+  const hiddenOlder=()=>!showingOlderDone()&&!search.value.trim()&&[...board.querySelectorAll('.kanban-card')].some(olderDone);
   const filtering = () => Boolean(search.value.trim() || effortFilter.value || hiddenOlder());
-  showOlderDone.addEventListener('change',updateCounts);
+  showOlderDone.addEventListener('click',()=>{const showing=!showingOlderDone();showOlderDone.setAttribute('aria-pressed',String(showing));showOlderDone.textContent=showing?'Hide older Done items':'Show older Done items';updateCounts();});
   // Recheck ageing in an open board without requiring a page reload.
   setInterval(updateCounts,60000);
   let commentSaving = false;
@@ -106,7 +107,7 @@
       const textMatch = /^#\d+$/.test(query) ? Number(query.slice(1)) === Number(card.dataset.item)
         : card.querySelector('.kanban-card-title').textContent.toLocaleLowerCase().includes(query);
       const ids = card.dataset.efforts ? card.dataset.efforts.split(',') : [];
-      const match = (!olderDone(card)||showOlderDone.checked||Boolean(query)) && textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
+      const match = (!olderDone(card)||showingOlderDone()||Boolean(query)) && textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
       card.hidden = !match; matches += Number(match); total++;
     });
     $('#clear-kanban-search').disabled = !query;
