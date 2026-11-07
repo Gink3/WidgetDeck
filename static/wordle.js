@@ -26,7 +26,7 @@
     const active = game?.status === 'active';
     input.disabled = !active || busy; $('#wordle-submit').disabled = !active || busy;
     $('#wordle-new').disabled = busy || !csrf; $('#wordle-refresh').disabled = busy;
-    $('#wordle-hard').disabled = busy;
+    $('#wordle-hard').disabled = busy; $('#wordle-give-up').disabled = !active || busy;
     // Changing length starts a fresh game; hard mode applies to the next game.
     lengthSelect.disabled = busy;
     $('#wordle-keyboard').querySelectorAll('button').forEach(button => { button.disabled = !active || busy; });
@@ -125,6 +125,13 @@
   }
   $('#wordle-new').addEventListener('click',()=>startGame());
   lengthSelect.addEventListener('change',()=>startGame(false));
+  $('#wordle-give-up').addEventListener('click',async()=>{
+    if(busy||game?.status!=='active')return;
+    busy=true;controls();
+    try{const data=await api(`games/${game.id}/give-up`,{revision:game.revision});input.value='';render(data);}
+    catch(error){status(error.message);}
+    finally{busy=false;controls();}
+  });
   $('#wordle-guess-form').addEventListener('submit',async event => {
     event.preventDefault();if (busy || game?.status !== 'active') return;
     if(input.value.length !== Number(input.maxLength)){status(`Enter ${input.maxLength} letters.`);return;}
