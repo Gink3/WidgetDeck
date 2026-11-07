@@ -45,6 +45,7 @@ class TodoKanbanBrowserTests(unittest.TestCase):
             page.locator('.kanban-filters>summary').click();page.locator('#kanban-search').fill('not found');page.locator('#kanban-search').fill('')
             expect(card).to_be_hidden();page.locator('.kanban-column-tools summary').click();page.locator('#show-older-done').click();expect(card).to_be_visible()
             page.locator('.kanban-column-tools summary').click();page.locator('#show-older-done').click();expect(card).to_be_hidden()
+            page.locator('.kanban-filters>summary').click()
             page.locator('#kanban-search').fill('#'+str(item['id']));expect(card).to_be_visible()
             self.assertEqual(len(context.request.get(base+'/api/tools/kanban/boards/'+ident).json()['board']['items']),1)
             browser.close()

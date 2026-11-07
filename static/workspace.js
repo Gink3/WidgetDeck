@@ -33,7 +33,13 @@
     const content=document.createElement('div');content.className='workspace-content';let heading=main.querySelector('.tool-heading');if(!heading&&main.matches('.flashcard-page')){heading=document.createElement('div');heading.className='tool-heading';const text=document.createElement('div');main.querySelectorAll(':scope>.eyebrow,:scope>h1,:scope>.lead').forEach(node=>text.append(node));const create=document.createElement('button');create.type='button';create.className='primary';create.textContent='+ New deck';create.addEventListener('click',()=>{wrapper.classList.remove('mobile-browsing');wrapper.classList.add('mobile-editing');document.querySelector('#new-deck-name').focus();});heading.append(text,create);main.prepend(heading);}const children=[...main.children].filter(child=>child!==heading);children.forEach(child=>content.append(child));wrapper.append(aside,content);main.append(wrapper);
     if(main.matches('.campaign-tool:not(.kanban-page)')){let previous=select.value;select.removeAttribute('onchange');select.addEventListener('change',()=>{if(!window.workspaceCanLeave()){select.value=previous;return;}dirtyForms.clear();previous=select.value;location.assign(select.value);});}
     const original=select.closest('label')||select;original.classList.add('workspace-library-original');
-    const back=document.createElement('button');back.type='button';back.className='workspace-back workspace-mobile-back';back.textContent='← '+name;headingActions(heading)?.prepend(back);
+    const back=document.createElement('button');back.type='button';back.className='workspace-back workspace-mobile-back';back.textContent='← '+name;
+    if(main.matches('.kanban-page')){
+      back.setAttribute('aria-label','← Boards');back.title='Boards';
+      const icon=document.createElement('span');icon.className='kanban-back-icon';icon.setAttribute('aria-hidden','true');icon.textContent='←';
+      const label=document.createElement('span');label.className='kanban-back-label';label.textContent='Boards';back.replaceChildren(icon,label);
+    }
+    headingActions(heading)?.prepend(back);
     let browsingRequested=false;
     window.addEventListener('popstate',()=>{browsingRequested=false;});
     document.addEventListener('submit',event=>{if(event.target.id==='new-flashcard-deck')browsingRequested=false;});

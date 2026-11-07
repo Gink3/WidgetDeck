@@ -11,6 +11,22 @@
   const columnSections = () => [...board.querySelectorAll('.kanban-column')];
   const filterDisclosure=$('.kanban-filters'),phoneQuery=matchMedia('(max-width:900px)');
   const fitFilters=()=>{filterDisclosure.open=!phoneQuery.matches;};fitFilters();phoneQuery.addEventListener('change',fitFilters);
+  function positionFilters(){
+    if(!phoneQuery.matches||!filterDisclosure.open)return;
+    const viewport=window.visualViewport,viewportTop=viewport?.offsetTop||0,height=viewport?.height||innerHeight;
+    const anchor=filterDisclosure.querySelector('summary').getBoundingClientRect(),width=Math.min(480,innerWidth-24);
+    const left=Math.max(12,Math.min(anchor.right-width,innerWidth-width-12));
+    const preferredHeight=Math.min(260,Math.max(44,height-16));
+    const top=Math.max(viewportTop+8,Math.min(anchor.bottom+6,viewportTop+height-preferredHeight-8));
+    filterDisclosure.style.setProperty('--kanban-filter-left',left+'px');filterDisclosure.style.setProperty('--kanban-filter-top',top+'px');
+    filterDisclosure.style.setProperty('--kanban-filter-width',width+'px');filterDisclosure.style.setProperty('--kanban-filter-height',Math.max(44,viewportTop+height-top-8)+'px');
+  }
+  filterDisclosure.addEventListener('toggle',positionFilters);window.addEventListener('resize',positionFilters);
+  window.addEventListener('scroll',positionFilters,{passive:true});window.visualViewport?.addEventListener('resize',positionFilters);window.visualViewport?.addEventListener('scroll',positionFilters);
+  const closeFilters=()=>{filterDisclosure.open=false;filterDisclosure.querySelector('summary').focus();};
+  $('#close-kanban-filters').addEventListener('click',closeFilters);
+  filterDisclosure.addEventListener('keydown',event=>{if(phoneQuery.matches&&event.key==='Escape'){event.preventDefault();event.stopPropagation();closeFilters();}});
+  document.addEventListener('click',event=>{if(phoneQuery.matches&&!filterDisclosure.contains(event.target))filterDisclosure.open=false;});
   const phoneColumn=$('#phone-kanban-column');
   const params=new URLSearchParams(location.search);
   if([...phoneColumn.options].some(option=>option.value===params.get('column')))phoneColumn.value=params.get('column');
@@ -112,7 +128,10 @@
     });
     $('#clear-kanban-search').disabled = !query;
     $('#clear-effort-filter').disabled = !effortFilter.value;
-    $('#kanban-search-count').textContent = filtering() ? `${matches} of ${total} items · clear filters to reorder cards` : '';
+    $('#kanban-search-count').textContent = filtering() ? `${matches} of ${total} items` : '';
+    $('#kanban-search-count').title='Clear filters or show older Done items to reorder all cards.';
+    const activeFilters=Boolean(query||effortFilter.value);$('#kanban-filter-indicator').hidden=!activeFilters;
+    filterDisclosure.querySelector('summary').setAttribute('aria-label',activeFilters?'Search and filter (active filters)':'Search and filter');
     columnSections().forEach((section, index, all) => {
       section.draggable = columnMode && !moving;
       section.querySelector('.column-order-controls').hidden = !columnMode;
