@@ -538,3 +538,22 @@ def kanban_effort_items(effort_id):
         FROM kanban_item_efforts a JOIN kanban_items i ON i.id=a.item_id
         JOIN kanban_boards b ON b.id=i.board_id JOIN kanban_columns c ON c.id=i.column_id
         WHERE a.effort_id=? AND b.user_id=? ORDER BY b.id,c.position,i.position,i.id""",(effort_id,_owner_id()))])
+
+
+def delete_kanban_board(board_id, expected_name):
+    """Delete one owned board atomically after an exact typed-name confirmation."""
+    connection=db()
+    with connection:
+        connection.execute('BEGIN IMMEDIATE')
+        board=kanban_board(board_id)
+        if not board:return False
+        if expected_name!=board['name']:
+            raise ValueError('Enter the exact board name to confirm deletion.')
+        items='SELECT id FROM kanban_items WHERE board_id=?'
+        connection.execute(f'DELETE FROM kanban_links WHERE item_id IN ({items}) OR target_id IN ({items})',(board_id,board_id))
+        for table in ('kanban_comments','kanban_item_history','kanban_item_efforts'):
+            connection.execute(f'DELETE FROM {table} WHERE item_id IN ({items})',(board_id,))
+        connection.execute('DELETE FROM kanban_items WHERE board_id=?',(board_id,))
+        connection.execute('DELETE FROM kanban_columns WHERE board_id=?',(board_id,))
+        connection.execute('DELETE FROM kanban_boards WHERE id=? AND user_id=?',(board_id,_owner_id()))
+    return True

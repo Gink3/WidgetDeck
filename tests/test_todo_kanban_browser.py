@@ -47,3 +47,20 @@ class TodoKanbanBrowserTests(unittest.TestCase):
             page.locator('#kanban-search').fill('#'+str(item['id']));expect(card).to_be_visible()
             self.assertEqual(len(context.request.get(base+'/api/tools/kanban/boards/'+ident).json()['board']['items']),1)
             browser.close()
+
+    def test_delete_board_requires_typed_name_and_keeps_other_boards(self):
+        from playwright.sync_api import sync_playwright,expect
+        base=os.environ['WORKSPACE_TEST_BASE_URL']
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();context=browser.new_context(viewport={'width':360,'height':800},service_workers='block')
+            self.assertEqual(context.request.post(base+'/register',form={**auth_form(context.request,base),'username':'board-delete-'+secrets.token_hex(4),'password':secrets.token_urlsafe(32)},max_redirects=0).status,302)
+            context.request.post(base+'/tools/kanban',form={'name':'Keep this'},max_redirects=0)
+            created=context.request.post(base+'/tools/kanban',form={'name':'Delete this'},max_redirects=0)
+            page=context.new_page();dialogs=[];page.on('dialog',lambda d:(dialogs.append(d.message),d.accept()))
+            page.goto(base+created.headers['location']);page.locator('.kanban-column-tools summary').click();page.locator('#delete-board-open').click()
+            expect(page.locator('#delete-board-confirm')).to_be_disabled();page.locator('#delete-board-name').fill('delete this');expect(page.locator('#delete-board-confirm')).to_be_disabled()
+            page.locator('#delete-board-name').fill('Delete this');page.locator('#delete-board-confirm').click()
+            expect(page.locator('.workspace-library')).to_be_visible()
+            expect(page.locator('.workspace-library')).to_contain_text('Keep this');expect(page.locator('.workspace-library')).not_to_contain_text('Delete this')
+            self.assertEqual(dialogs,[]);self.assertEqual(len(context.request.get(base+'/api/tools/kanban/boards').json()['boards']),1)
+            browser.close()

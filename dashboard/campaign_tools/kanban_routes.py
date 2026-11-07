@@ -288,3 +288,14 @@ def kanban_item_efforts(item_id):
 def kanban_effort_items(effort_id):
     items=models.kanban_effort_items(effort_id)
     return jsonify(items=items) if items is not None else (jsonify(error='Effort not found.'),404)
+
+
+@campaign_tools.delete('/api/tools/kanban/boards/<int:board_id>')
+@login_required
+def kanban_delete_board(board_id):
+    payload=request.get_json(silent=True)
+    if not isinstance(payload,dict) or not isinstance(payload.get('expected_name'),str):
+        return jsonify(error='Enter the exact board name to confirm deletion.'),400
+    try:deleted=models.delete_kanban_board(board_id,payload['expected_name'])
+    except ValueError as error:return jsonify(error=str(error)),400
+    return jsonify(deleted=True) if deleted else (jsonify(error='Board not found.'),404)

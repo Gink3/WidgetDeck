@@ -30,6 +30,26 @@
   let nativeSubmittingForm=null;
   const otherEdits=()=>[...formBaseline].some(([form,value])=>form!==nativeSubmittingForm&&JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))!==value);
 
+  const deleteBoardDialog=$('#delete-board-dialog'),deleteBoardName=$('#delete-board-name'),deleteBoardConfirm=$('#delete-board-confirm');
+  $('#delete-board-open').addEventListener('click',()=>{
+    if(!canLeave())return;
+    deleteBoardName.value='';$('#delete-board-status').textContent='';deleteBoardConfirm.disabled=true;
+    deleteBoardDialog.showModal();deleteBoardName.focus();
+  });
+  deleteBoardName.addEventListener('input',()=>{deleteBoardConfirm.disabled=deleteBoardName.value!==deleteBoardDialog.dataset.boardName;});
+  $('#delete-board-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    if(deleteBoardName.value!==deleteBoardDialog.dataset.boardName||saving||moving)return;
+    saving=true;deleteBoardConfirm.disabled=true;deleteBoardName.disabled=true;
+    try{
+      const response=await fetch(`/api/tools/kanban/boards/${board.dataset.board}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({expected_name:deleteBoardName.value})});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'Unable to delete board.');
+      // The board is gone; successful deletion authorizes leaving its drafts.
+      dirty=false;saving=false;$('#comment-body').value='';formBaseline.clear();
+      deleteBoardDialog.close();location.assign('/tools/kanban?library=1');
+    }catch(error){$('#delete-board-status').textContent=error.message;}
+    finally{saving=false;deleteBoardName.disabled=false;deleteBoardConfirm.disabled=deleteBoardName.value!==deleteBoardDialog.dataset.boardName;}
+  });
   $('#manage-columns').addEventListener('click', () => {
     if (!canLeave()) return;
     dirty = false; $('#comment-body').value = '';
