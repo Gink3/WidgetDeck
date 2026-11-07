@@ -12,6 +12,7 @@ class TodoWordleBrowserTests(unittest.TestCase):
             self.assertEqual(context.request.post(base+'/register',form={**auth_form(context.request,base),'username':'word-length-'+secrets.token_hex(4),'password':secrets.token_urlsafe(32)},max_redirects=0).status,302)
             page=context.new_page();dialogs=[];page.on('dialog',lambda d:(dialogs.append(d.message),d.dismiss()))
             page.goto(base+'/tools/wordle');page.locator('#wordle-new').click()
+            expect(page.locator('#wordle-status')).to_contain_text('0 of 6 guesses used')
             first=context.request.get(base+'/api/tools/wordle/game').json()['game']
             page.locator('#wordle-settings>summary').click();page.locator('#wordle-length').select_option('6')
             expect(page.locator('#wordle-guess')).to_have_attribute('maxlength','6')
