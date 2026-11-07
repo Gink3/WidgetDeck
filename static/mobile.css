@@ -130,3 +130,28 @@ body > header > #main-navigation { display:flex; min-height:64px; align-items:ce
 .resume-refresh[hidden]{display:none!important}
 .resume-refresh p{margin:0 0 8px}
 .resume-refresh button{min-height:44px;font-size:16px}
+
+/* One action flow per widget header: navigation, primary action, then More.
+   Flatten legacy action groups so each control can use the available row space. */
+.workspace-heading-actions-created { display: contents; }
+.workspace-back[hidden] { display: none !important; }
+@media (max-width: 720px) {
+  .tool-heading.workspace-heading,
+  .campaign-tool .tool-heading.workspace-heading {
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  }
+  .tool-heading.workspace-heading > .workspace-heading-actions {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start;
+    gap: 8px; width: auto;
+  }
+  .workspace-heading-actions > :is(button,a,.workspace-more),
+  .workspace-heading-actions .kanban-column-tools > .workspace-more {
+    flex: none; margin: 0;
+  }
+  .campaign-tool .tool-heading.workspace-heading .primary { margin-top: 0; }
+  .workspace-heading-actions .kanban-column-tools { display: contents; }
+  .workspace-heading-actions #column-order-hint { flex-basis: 100%; }
+  .workspace-heading-actions .workspace-more > summary {
+    display: flex; align-items: center; margin: 0;
+  }
+}

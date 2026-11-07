@@ -11,6 +11,16 @@
     form.closest('dialog')?.addEventListener('close',()=>{dirtyForms.delete(form);});
   });
   window.addEventListener('beforeunload',event=>{if(dirtyForms.size){event.preventDefault();event.returnValue='';}});
+  // Keep library navigation and page actions in the same wrapping header row.
+  // Reuse existing controls so their handlers, form ownership and focus survive.
+  const headingActions=heading=>{
+    if(!heading)return null;
+    heading.classList.add('workspace-heading');
+    let actions=heading.querySelector(':scope>.kanban-heading-actions,:scope>.rdt-heading-actions,:scope>.workspace-actions,:scope>.workspace-heading-actions');
+    if(!actions){actions=document.createElement('div');actions.className='workspace-heading-actions workspace-heading-actions-created';[...heading.children].slice(1).forEach(child=>actions.append(child));heading.append(actions);}
+    actions.classList.add('workspace-heading-actions');
+    return actions;
+  };
   const params=new URLSearchParams(location.search),owner=document.body.dataset.owner||'',key='dashboard.workspace.last.v1.'+owner;
   let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch(_){}
   const remember=(kind,value)=>{saved[kind]=value;try{localStorage.setItem(key,JSON.stringify(saved));}catch(_){}};
@@ -23,14 +33,14 @@
     const content=document.createElement('div');content.className='workspace-content';let heading=main.querySelector('.tool-heading');if(!heading&&main.matches('.flashcard-page')){heading=document.createElement('div');heading.className='tool-heading';const text=document.createElement('div');main.querySelectorAll(':scope>.eyebrow,:scope>h1,:scope>.lead').forEach(node=>text.append(node));const create=document.createElement('button');create.type='button';create.className='primary';create.textContent='+ New deck';create.addEventListener('click',()=>{wrapper.classList.remove('mobile-browsing');wrapper.classList.add('mobile-editing');document.querySelector('#new-deck-name').focus();});heading.append(text,create);main.prepend(heading);}const children=[...main.children].filter(child=>child!==heading);children.forEach(child=>content.append(child));wrapper.append(aside,content);main.append(wrapper);
     if(main.matches('.campaign-tool:not(.kanban-page)')){let previous=select.value;select.removeAttribute('onchange');select.addEventListener('change',()=>{if(!window.workspaceCanLeave()){select.value=previous;return;}dirtyForms.clear();previous=select.value;location.assign(select.value);});}
     const original=select.closest('label')||select;original.classList.add('workspace-library-original');
-    const back=document.createElement('button');back.type='button';back.className='workspace-back workspace-mobile-back';back.textContent='← '+name;content.prepend(back);
+    const back=document.createElement('button');back.type='button';back.className='workspace-back workspace-mobile-back';back.textContent='← '+name;headingActions(heading)?.prepend(back);
     let browsingRequested=false;
     window.addEventListener('popstate',()=>{browsingRequested=false;});
     document.addEventListener('submit',event=>{if(event.target.id==='new-flashcard-deck')browsingRequested=false;});
     content.tabIndex=-1;
-    const showEditor=()=>{wrapper.classList.add('mobile-editing');wrapper.classList.remove('mobile-browsing');if(innerWidth<=720)requestAnimationFrame(()=>{const field=main.dataset.workspaceAutofocus==='false'?null:content.querySelector('textarea:not(:disabled),input:not(:disabled):not([type=hidden])');(field||content).focus({preventScroll:true});});};
+    const showEditor=()=>{back.hidden=false;wrapper.classList.add('mobile-editing');wrapper.classList.remove('mobile-browsing');if(innerWidth<=720)requestAnimationFrame(()=>{const field=main.dataset.workspaceAutofocus==='false'?null:content.querySelector('textarea:not(:disabled),input:not(:disabled):not([type=hidden])');(field||content).focus({preventScroll:true});});};
     window.addEventListener('workspace:selected',()=>{if(!browsingRequested)showEditor();});
-    const showLibrary=()=>{browsingRequested=true;wrapper.classList.remove('mobile-editing');wrapper.classList.add('mobile-browsing');search.focus();};
+    const showLibrary=()=>{browsingRequested=true;back.hidden=true;wrapper.classList.remove('mobile-editing');wrapper.classList.add('mobile-browsing');search.focus();};
     back.addEventListener('click',showLibrary);window.addEventListener('workspace:browse',showLibrary);
     function render(){
       list.replaceChildren();[...select.options].filter(o=>o.value).forEach(option=>{const button=document.createElement('button');button.type='button';button.disabled=select.disabled;button.textContent=option.textContent;button.setAttribute('aria-pressed',String(option.value===select.value));button.hidden=!option.textContent.toLowerCase().includes(search.value.toLowerCase());button.addEventListener('click',()=>{if(select.disabled)return;select.value=option.value;select.dispatchEvent(new Event('change',{bubbles:true}));if(select.value===option.value){browsingRequested=false;remember(location.pathname,option.value);showEditor();}render();});list.append(button);});
@@ -39,7 +49,7 @@
     render();search.addEventListener('input',render);new MutationObserver(render).observe(select,{childList:true,attributes:true,attributeFilter:['disabled']});select.addEventListener('change',render);
     if(!location.search&&saved[location.pathname]&&[...select.options].some(o=>o.value===saved[location.pathname])){select.value=saved[location.pathname];select.dispatchEvent(new Event('change',{bubbles:true}));showEditor();}
     if(params.get('new')==='1'||params.has('board')||params.has('party')||params.has('table')||params.has('deck'))showEditor();
-    else if(innerWidth<=720)wrapper.classList.add('mobile-browsing');
+    else if(innerWidth<=720){wrapper.classList.add('mobile-browsing');back.hidden=true;}
   }
   document.querySelectorAll('[data-workspace-dialog]').forEach(button=>button.addEventListener('click',()=>{const dialog=document.getElementById(button.dataset.workspaceDialog);dialog.showModal();dialog.querySelector('input')?.focus();}));
   document.querySelectorAll('[data-workspace-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
@@ -68,6 +78,7 @@
     });
   }
   document.querySelectorAll('.tool-heading>a[download]').forEach(link=>{const more=document.createElement('details');more.className='workspace-more';const summary=document.createElement('summary');summary.textContent='More';const menu=document.createElement('div');link.replaceWith(more);menu.append(link);more.append(summary,menu);});
+  document.querySelectorAll('.tool-heading').forEach(headingActions);
 })();
 
 // Native disclosure controls retain tab order and work in dynamically mounted workspaces.
