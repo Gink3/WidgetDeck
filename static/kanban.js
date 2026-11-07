@@ -27,7 +27,8 @@
   showPhoneColumn();
   // Native creation forms count as dirty even when their dialogs are closed.
   const formBaseline=new Map([...document.querySelectorAll('dialog form')].map(form=>[form,JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))]));
-  const otherEdits=()=>[...formBaseline].some(([form,value])=>JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))!==value);
+  let nativeSubmittingForm=null;
+  const otherEdits=()=>[...formBaseline].some(([form,value])=>form!==nativeSubmittingForm&&JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))!==value);
 
   $('#manage-columns').addEventListener('click', () => {
     if (!canLeave()) return;
@@ -457,7 +458,13 @@
     if (canLeave()) { dirty = false; location.href = event.target.value; }
     else event.target.value = [...event.target.options].find((option) => option.defaultSelected)?.value || '';
   });
-  document.querySelectorAll('.new-card form').forEach((newForm) => newForm.addEventListener('submit', (event) => { if (!canLeave()) event.preventDefault(); else dirty = false; }));
+  document.querySelectorAll('.new-card form,#new-kanban form').forEach(newForm=>newForm.addEventListener('submit',event=>{
+    if(event.defaultPrevented)return;
+    if(!canLeave()){event.preventDefault();return;}
+    dirty=false;nativeSubmittingForm=newForm;
+    // A later validation handler can cancel submission; keep its draft protected.
+    queueMicrotask(()=>{if(event.defaultPrevented)nativeSubmittingForm=null;});
+  }));
   window.addEventListener('beforeunload', (event) => { if (dirty || saving || moving || commentSaving || $('#comment-body').value.trim() || otherEdits()) { event.preventDefault(); event.returnValue = ''; } });
   function renderEfforts(item) {
     $('#item-efforts-section').hidden = false;
