@@ -24,3 +24,26 @@ class TodoKanbanBrowserTests(unittest.TestCase):
             page.locator('dialog[open] form').get_by_label('Item title',exact=True).fill('Unsaved draft')
             page.reload();self.assertIn('beforeunload',dialogs)
             browser.close()
+
+    def test_older_done_is_hidden_recoverable_and_searchable(self):
+        from datetime import datetime,timedelta,timezone
+        from playwright.sync_api import sync_playwright,expect
+        base=os.environ['WORKSPACE_TEST_BASE_URL']
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch();context=browser.new_context(viewport={'width':375,'height':850},service_workers='block')
+            self.assertEqual(context.request.post(base+'/register',form={**auth_form(context.request,base),'username':'done-age-'+secrets.token_hex(4),'password':secrets.token_urlsafe(32)},max_redirects=0).status,302)
+            created=context.request.post(base+'/tools/kanban',form={'name':'Ageing'},max_redirects=0)
+            from urllib.parse import urlparse,parse_qs
+            ident=parse_qs(urlparse(created.headers['location']).query)['board'][0]
+            snapshot=context.request.get(base+'/api/tools/kanban/boards/'+ident).json()['board']
+            item=context.request.post(base+'/api/tools/kanban/boards/'+ident+'/items',data={'title':'Old completion','column_id':snapshot['columns'][-1]['id']}).json()['item']
+            self.assertTrue(item['completed_at'])
+            page=context.new_page();page.goto(base+created.headers['location']);page.locator('#phone-kanban-column').select_option(str(item['column_id']))
+            card=page.locator('[data-item="'+str(item['id'])+'"]');expect(card).to_be_visible()
+            page.clock.set_fixed_time(datetime.now(timezone.utc)+timedelta(days=8))
+            page.locator('.kanban-filters>summary').click();page.locator('#kanban-search').fill('not found');page.locator('#kanban-search').fill('')
+            expect(card).to_be_hidden();page.locator('#show-older-done').check();expect(card).to_be_visible()
+            page.locator('#show-older-done').uncheck();expect(card).to_be_hidden()
+            page.locator('#kanban-search').fill('#'+str(item['id']));expect(card).to_be_visible()
+            self.assertEqual(len(context.request.get(base+'/api/tools/kanban/boards/'+ident).json()['board']['items']),1)
+            browser.close()

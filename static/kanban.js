@@ -57,7 +57,13 @@
   const efforts = JSON.parse($('#kanban-efforts-data').textContent);
   const initialEffort = new URLSearchParams(location.search).get('effort');
   if ([...effortFilter.options].some(o => o.value === initialEffort)) effortFilter.value = initialEffort;
-  const filtering = () => Boolean(search.value.trim() || effortFilter.value);
+  const showOlderDone=$('#show-older-done');
+  const olderDone=card=>Boolean(card.dataset.completedAt)&&Date.parse(card.dataset.completedAt)<=Date.now()-7*24*60*60*1000;
+  const hiddenOlder=()=>!showOlderDone.checked&&!search.value.trim()&&[...board.querySelectorAll('.kanban-card')].some(olderDone);
+  const filtering = () => Boolean(search.value.trim() || effortFilter.value || hiddenOlder());
+  showOlderDone.addEventListener('change',updateCounts);
+  // Recheck ageing in an open board without requiring a page reload.
+  setInterval(updateCounts,60000);
   let commentSaving = false;
   let itemRecovery, commentRecovery;
   let selected = null, dirty = false, saving = false, moving = false, requestNumber = 0, dragged = null, ignoreClickUntil = 0;
@@ -80,7 +86,7 @@
       const textMatch = /^#\d+$/.test(query) ? Number(query.slice(1)) === Number(card.dataset.item)
         : card.querySelector('.kanban-card-title').textContent.toLocaleLowerCase().includes(query);
       const ids = card.dataset.efforts ? card.dataset.efforts.split(',') : [];
-      const match = textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
+      const match = (!olderDone(card)||showOlderDone.checked||Boolean(query)) && textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
       card.hidden = !match; matches += Number(match); total++;
     });
     $('#clear-kanban-search').disabled = !query;
@@ -109,6 +115,7 @@
     card.classList.toggle('is-cancelled', Boolean(item.cancelled_at));
     card.querySelector('.cancelled-badge').hidden = !item.cancelled_at;
     card.dataset.revision = item.revision;
+    card.dataset.completedAt = item.completed_at || '';
     card.dataset.efforts = (item.efforts || []).map(e => e.id).join(',');
     const badges = card.querySelector('.effort-badges'); badges.replaceChildren();
     (item.efforts || []).forEach(e => { const badge = document.createElement('span'); badge.className = 'effort-badge'; badge.textContent = e.name; badges.append(badge); });

@@ -44,6 +44,15 @@ def init_database(app):
         )""")
 
         connection.execute("CREATE INDEX IF NOT EXISTS kanban_history_item ON kanban_item_history(item_id,id DESC)")
+        if "completed_at" not in item_columns:
+            connection.execute("ALTER TABLE kanban_items ADD COLUMN completed_at TEXT")
+            for row in connection.execute("SELECT i.id,i.created_at FROM kanban_items i JOIN kanban_columns c ON c.id=i.column_id WHERE lower(trim(c.name))='done'").fetchall():
+                completed=row[1]
+                for history in connection.execute('SELECT changes,occurred_at FROM kanban_item_history WHERE item_id=? ORDER BY id',(row[0],)):
+                    status=json.loads(history[0]).get('status',{})
+                    if str(status.get('after','')).strip().casefold()=='done':completed=history[1]
+                connection.execute('UPDATE kanban_items SET completed_at=? WHERE id=?',(completed,row[0]))
+
 
         connection.execute("""CREATE TABLE IF NOT EXISTS kanban_comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,item_id INTEGER NOT NULL,user_id INTEGER NOT NULL,
@@ -182,6 +191,8 @@ def add_kanban_item(board_id, column_id, title, notes, effort_ids=None):
         now = timestamp()
         cursor = connection.execute("""INSERT INTO kanban_items(board_id,column_id,title,notes,position,created_at,updated_at)
             VALUES(?,?,?,?,?,?,?)""", (board_id, column_id, title, notes, position, now, now))
+        if connection.execute('SELECT name FROM kanban_columns WHERE id=?',(column_id,)).fetchone()[0].strip().casefold()=='done':
+            connection.execute('UPDATE kanban_items SET completed_at=? WHERE id=?',(now,cursor.lastrowid))
         ids = validate_effort_ids([] if effort_ids is None else effort_ids)
         connection.executemany("INSERT INTO kanban_item_efforts(item_id,effort_id) VALUES(?,?)",
                                [(cursor.lastrowid, ident) for ident in ids])
@@ -206,6 +217,8 @@ def _place_item(item, column_id, before_id=None):
     if item["column_id"] != column_id:
         old_column = connection.execute("SELECT name FROM kanban_columns WHERE id=?", (item["column_id"],)).fetchone()
         changes["status"] = {"before": old_column["name"], "after": column["name"]}
+        completed = ((item.get('completed_at') if old_column['name'].strip().casefold()=='done' else None) or timestamp()) if column['name'].strip().casefold()=='done' else None
+        connection.execute('UPDATE kanban_items SET completed_at=? WHERE id=?',(completed,item['id']))
         remaining = [row["id"] for row in connection.execute(
             "SELECT id FROM kanban_items WHERE column_id=? AND id<>? ORDER BY position,id", (item["column_id"], item["id"]))]
         connection.executemany("UPDATE kanban_items SET position=? WHERE id=?", [(index, ident) for index, ident in enumerate(remaining)])
