@@ -28,7 +28,7 @@ body > header > #main-navigation { display:flex; min-height:64px; align-items:ce
   .mobile-nav-ready > header { flex-wrap: nowrap; align-items: center; padding-bottom: 8px; }
   .mobile-nav-ready > header .header-identity { flex: 1; }
   .mobile-nav-ready > header .brand-logo { width: 64px; }
-  #mobile-nav-toggle { flex: none; background: var(--panel-hi); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; }
+  #mobile-nav-toggle { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; padding:10px; flex: none; background: var(--panel-hi); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; }
   .mobile-nav-ready > header #main-navigation {
     position: absolute; top: 100%; left: 0; right: 0; z-index: 25;
     max-width: 100%; width: 100%; max-height: calc(var(--mobile-viewport-height,100dvh) - 90px);
