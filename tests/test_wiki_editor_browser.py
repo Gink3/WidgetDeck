@@ -382,3 +382,18 @@ class WikiEditorBrowserTests(unittest.TestCase):
         self.editor.press('Escape')
         self.assertAlmostEqual(before['y'], self.editor.bounding_box()['y'], delta=1)
         self.assertEqual(self.editor.input_value(), '$\\alp')
+
+    def test_save_status_combines_device_and_server_messages(self):
+        pending = []
+        self.page.route('**/api/pages/scroll-test', lambda route: pending.append(route) if route.request.method == 'PUT' else route.continue_())
+        self.editor.fill('Draft awaiting server')
+        status = self.page.locator('.wiki-save-status')
+        self.page.wait_for_function("() => document.querySelector('.wiki-save-status').textContent.includes('Draft saved on this device.')")
+        self.assertEqual(self.page.locator('.wiki-local-status').count(), 0)
+        self.page.wait_for_timeout(800)
+        self.assertEqual(len(pending), 1)
+        self.assertIn('Saving to server', status.inner_text())
+        pending[0].continue_()
+        self.page.wait_for_function("() => document.querySelector('.wiki-save-status').textContent.trim() === 'Saved to server'")
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.assertTrue(status.is_visible())

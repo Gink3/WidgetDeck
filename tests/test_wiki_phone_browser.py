@@ -46,7 +46,7 @@ class WikiPhoneBrowserTests(unittest.TestCase):
             for width,height in [(320,568),(375,812),(719,900),(844,390),(900,700)]:
                 page.set_viewport_size({'width':width,'height':height});self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),width)
                 expect(page.get_by_role('button',name='Save',exact=True)).to_have_count(0)
-                self.assertGreaterEqual(page.get_by_role('button',name='Library',exact=True).bounding_box()['height'],44)
+                self.assertGreaterEqual(page.get_by_role('button',name='Wiki library',exact=True).bounding_box()['height'],44)
             page.get_by_role('button',name='Preview',exact=True).click();expect(page.get_by_text('Preview of current edits',exact=True)).to_be_visible()
             expect(page.get_by_role('textbox',name='Article Markdown')).to_have_count(0)
             page.set_viewport_size({'width':1440,'height':1000})

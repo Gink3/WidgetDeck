@@ -10,7 +10,6 @@
 .wiki-phone>.wiki-toolbar>span{grid-area:status;display:block;font-size:12px;line-height:1.3;overflow-wrap:anywhere}
 .wiki-phone>.wiki-toolbar>div{grid-area:modes;margin:0;display:flex;gap:6px;flex-wrap:wrap;min-width:0}
 .wiki-editor.wiki-phone button,.wiki-editor.wiki-phone summary{min-height:44px;box-sizing:border-box}
-.wiki-editor.wiki-phone>.wiki-local-status{display:none}
 .wiki-editor.wiki-phone .wiki-workspace{display:block;min-height:0;flex:none}
 .wiki-editor.wiki-phone .wiki-workspace.split .wiki-edit-pane{display:none}
 .wiki-editor.wiki-phone .wiki-workspace.edit .wiki-edit-pane{display:flex;position:relative;height:max(156px,calc(var(--mobile-viewport-height,100dvh) - var(--wiki-toolbar-height,132px)));min-height:0;overflow:visible}

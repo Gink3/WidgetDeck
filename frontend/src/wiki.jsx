@@ -1501,7 +1501,11 @@ function Editor() {
           aria-label="Page title"
           readOnly={mode === "preview"}
         />
-        <span role="status">{status}{phone && localMessage?' · '+localMessage:''}</span>
+        <span className="wiki-save-status" role="status">{
+          status === "Unsaved" ? (localMessage || status)
+            : status === "Saving…" && localMessage ? `${localMessage} Saving to server…`
+            : status
+        }</span>
         <div>
           {["edit", "split", "preview"].map((m) => (
             <button
@@ -1571,9 +1575,6 @@ function Editor() {
           )}
         </section>
       )}
-      <p className="wiki-local-status" role="status">
-        {localMessage || "\u00a0"}
-      </p>
       {!!recovery.length && (
         <section
           className="wiki-recovery"
