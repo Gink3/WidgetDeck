@@ -14,9 +14,9 @@
 .wiki-editor.wiki-phone .wiki-workspace{display:block;min-height:0;flex:none}
 .wiki-editor.wiki-phone .wiki-workspace.split .wiki-edit-pane{display:none}
 .wiki-editor.wiki-phone .wiki-workspace.edit .wiki-edit-pane{display:flex;position:relative;height:max(156px,calc(var(--mobile-viewport-height,100dvh) - var(--wiki-toolbar-height,132px)));min-height:0;overflow:visible}
-.wiki-editor.wiki-phone .wiki-edit-pane>textarea{min-height:96px;height:auto;flex:1;resize:none;font-size:16px;padding:12px;overflow:auto;scroll-margin-top:calc(var(--wiki-toolbar-height,132px) + 72px)}
+.wiki-editor.wiki-phone .wiki-edit-pane>textarea{order:2;min-height:96px;height:auto;flex:1;resize:none;font-size:16px;padding:12px;overflow:auto;scroll-margin-top:calc(var(--wiki-toolbar-height,132px) + 72px)}
 .wiki-editor.wiki-phone .wiki-editor-hint{display:none}
-.wiki-editor.wiki-phone[data-completing=true] .wiki-edit-pane>textarea{min-height:44px;padding:8px;order:2}
+.wiki-editor.wiki-phone[data-completing=true] .wiki-edit-pane>textarea{min-height:44px;padding:12px;order:2}
 .wiki-editor.wiki-phone .wiki-completions{position:static;max-height:88px;min-height:44px;overflow:auto;z-index:15;overscroll-behavior:contain;order:3;flex-shrink:1}
 .wiki-editor.wiki-phone .wiki-preview-pane{padding:12px 16px;overflow:visible;min-height:0}
 .wiki-editor.wiki-phone .wiki-reading-layout,.wiki-editor.wiki-phone .split .wiki-reading-layout{grid-template-columns:minmax(0,1fr);gap:12px}
@@ -42,7 +42,7 @@
 .wiki-editor.wiki-phone .wiki-format-toolbar [data-format-group=insert]{order:-1}
 .wiki-editor.wiki-phone .wiki-format-menu{overscroll-behavior:contain;touch-action:pan-y}
 .wiki-editor.wiki-phone .wiki-format-menu button{white-space:normal}
-.wiki-editor.wiki-phone .wiki-equation-preview{max-height:min(140px,20dvh);padding:8px;box-sizing:border-box}
+.wiki-editor.wiki-phone .wiki-equation-preview{order:3;flex-shrink:0;max-height:min(140px,20dvh);padding:8px;box-sizing:border-box}
 .wiki-editor.wiki-phone .wiki-edit-pane:has(>.wiki-equation-preview)>textarea{min-height:64px}
 .wiki-preview-label{color:var(--muted);font-size:13px;margin:0 0 8px}
 .wiki-editor.wiki-phone .wiki-help-dialog{box-sizing:border-box;width:min(600px,calc(100vw - 16px));max-height:calc(var(--mobile-viewport-height,100dvh) - 16px);overflow:auto;padding:16px;border:1px solid var(--rule);background:var(--panel);color:var(--ink)}

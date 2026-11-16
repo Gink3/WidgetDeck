@@ -374,3 +374,17 @@ class WikiEditorBrowserTests(unittest.TestCase):
         self.page.get_by_text('Saved to server',exact=True).first.wait_for()
         self.page.goto(self.base+'/tools/wiki/scroll-test?edit=1');self.editor.wait_for()
         self.assertEqual(self.editor.input_value(),expected)
+
+    def test_mobile_suggestions_do_not_move_editor_top(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.page.wait_for_selector('.wiki-editor.wiki-phone')
+        self.editor.fill('$')
+        before = self.editor.bounding_box()
+        self.editor.press_sequentially('\\alp')
+        self.page.get_by_role('listbox', name='math suggestions').wait_for(state='visible')
+        after = self.editor.bounding_box()
+        self.assertAlmostEqual(before['y'], after['y'], delta=1)
+        self.assertGreater(after['height'], 80)
+        self.editor.press('Escape')
+        self.assertAlmostEqual(before['y'], self.editor.bounding_box()['y'], delta=1)
+        self.assertEqual(self.editor.input_value(), '$\\alp')
