@@ -3,7 +3,7 @@
 .wiki-editor.wiki-phone{height:auto;min-height:0}
 #wiki-root:has(.wiki-phone){min-height:100dvh;padding-bottom:max(0px,calc(100dvh - var(--mobile-viewport-height,100dvh)))}
 #wiki-root:has(.wiki-phone[data-mode=edit])>.wiki-inbox-toggle{display:none}
-.wiki-editor.wiki-phone>.wiki-toolbar{position:sticky;top:var(--mobile-viewport-top,0px);z-index:25;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'library title save' 'modes modes modes' 'status status status';gap:6px;padding:8px;min-height:0;flex-shrink:0}
+.wiki-editor.wiki-phone>.wiki-toolbar{position:sticky;top:var(--mobile-viewport-top,0px);z-index:25;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'library title save' 'modes modes modes' 'status status status';gap:4px;padding:4px 8px;min-height:0;flex-shrink:0}
 .wiki-phone>.wiki-toolbar>button:first-child{grid-area:library}
 .wiki-phone>.wiki-toolbar>button.primary{grid-area:save}
 .wiki-phone>.wiki-toolbar>input{grid-area:title;width:100%;max-width:none;min-width:0;font-size:16px}
@@ -33,7 +33,7 @@
 .wiki-editor.wiki-phone .wiki-infobox{float:none;width:100%;margin:12px 0;box-sizing:border-box}
 .wiki-editor.wiki-phone .wiki-properties{margin:12px 0;padding:12px;border:1px solid var(--rule);border-radius:6px}
 .wiki-editor.wiki-phone .wiki-properties>summary{font-size:16px;display:flex;align-items:center}
-.wiki-editor.wiki-phone .wiki-format-toolbar{position:sticky;top:calc(var(--mobile-viewport-top,0px) + var(--wiki-toolbar-height,132px));display:flex;flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;gap:4px;padding:6px;z-index:20;touch-action:pan-x}
+.wiki-editor.wiki-phone .wiki-format-toolbar{position:sticky;top:calc(var(--mobile-viewport-top,0px) + var(--wiki-toolbar-height,132px));display:flex;flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;gap:4px;padding:3px 6px;z-index:20;touch-action:pan-x}
 .wiki-editor.wiki-phone .wiki-format-toolbar>*{flex-shrink:0}
 .wiki-editor.wiki-phone .wiki-format-toolbar[data-menu-open=true]{z-index:40}
 .wiki-editor.wiki-phone .wiki-format-toolbar button{min-width:44px;height:44px;white-space:nowrap}
