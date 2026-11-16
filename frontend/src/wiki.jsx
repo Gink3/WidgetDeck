@@ -42,6 +42,7 @@ import {
 } from "./wiki-features.jsx";
 import { SectionTree, BackupManager } from "./wiki-reading.jsx";
 import { figureBlocks, figureTemplate } from "./wiki-figures.mjs";
+import { SortableTable } from "./wiki-sortable-table.jsx";
 import { EditorToolbar } from "./wiki-toolbar.jsx";
 import { usePhone } from './use-phone.mjs';
 import './wiki-phone.css';
@@ -155,8 +156,8 @@ function MacroManager({ state }) {
     </details>
   );
 }
-function ScrollableTable({children}) {
-  return <div className="wiki-table-scroll" tabIndex={0} role="region" aria-label="Scrollable table"><table>{children}</table></div>;
+function ScrollableTable({children, ...props}) {
+  return <div className="wiki-table-scroll" tabIndex={0} role="region" aria-label="Scrollable table"><SortableTable {...props}>{children}</SortableTable></div>;
 }
 function Markdown({ content, pages, counts = {}, navigation = true }) {
   const parts = figureBlocks(content);

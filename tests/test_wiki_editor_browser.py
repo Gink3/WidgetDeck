@@ -397,3 +397,26 @@ class WikiEditorBrowserTests(unittest.TestCase):
         self.page.wait_for_function("() => document.querySelector('.wiki-save-status').textContent.trim() === 'Saved to server'")
         self.page.set_viewport_size({'width': 390, 'height': 844})
         self.assertTrue(status.is_visible())
+
+    def test_markdown_tables_sort_without_modifying_saved_content(self):
+        content = '| Name | Count |\n| --- | ---: |\n| Zebra | 10 |\n| **apple** | 2 |\n| Apple | 2 |\n| Banana | -1 |\n| Empty | |\n\n| Other |\n| --- |\n| Unchanged |'
+        self.editor.fill(content)
+        self.page.get_by_role('button', name='Save', exact=True).click()
+        tables = self.page.locator('#article-top table')
+        tables.first.wait_for(state='visible')
+        def names():
+            return tables.first.locator('tbody tr td:first-child').all_text_contents()
+        self.assertEqual(names(), ['Zebra', 'apple', 'Apple', 'Banana', 'Empty'])
+        tables.first.get_by_role('button', name='Sort Count ascending', exact=True).click()
+        self.assertEqual(names(), ['Banana', 'apple', 'Apple', 'Zebra', 'Empty'])
+        self.assertEqual(tables.first.locator('th').nth(1).get_attribute('aria-sort'), 'ascending')
+        tables.first.get_by_role('button', name='Sort Count descending', exact=True).focus()
+        self.page.keyboard.press('Enter')
+        self.assertEqual(names(), ['Zebra', 'apple', 'Apple', 'Banana', 'Empty'])
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        tables.first.get_by_role('button', name='Sort Name ascending', exact=True).click()
+        self.assertEqual(names(), ['apple', 'Apple', 'Banana', 'Empty', 'Zebra'])
+        self.assertEqual(tables.first.locator('th').nth(1).get_attribute('aria-sort'), 'none')
+        self.assertEqual(tables.first.locator('strong').inner_text(), 'apple')
+        self.assertEqual(tables.nth(1).locator('tbody').inner_text(), 'Unchanged')
+        self.assertEqual(self.client.get('/tools/wiki/api/pages/scroll-test').get_json()['page']['content'], content)

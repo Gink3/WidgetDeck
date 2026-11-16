@@ -750,3 +750,22 @@
 @media (max-width: 800px) {
   .wiki-toolbar > .wiki-save-status { display: block; flex-basis: 100%; }
 }
+
+.markdown-preview .wiki-table-sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.markdown-preview .wiki-table-sort:hover,
+.markdown-preview .wiki-table-sort:focus-visible { color: var(--teal); outline: 1px solid var(--teal); }
+.markdown-preview th[aria-sort=ascending] .wiki-table-sort,
+.markdown-preview th[aria-sort=descending] .wiki-table-sort { color: var(--teal); }
