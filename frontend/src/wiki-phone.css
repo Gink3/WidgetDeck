@@ -55,3 +55,5 @@
  .wiki-document-viewer button,.wiki-document-viewer a{min-height:44px}
  .wiki-document-viewer .wiki-pdf-page{max-width:100%;height:auto;max-height:none}
 }
+
+.wiki-editor.wiki-phone .wiki-table-scroll th[aria-sort] { max-width: none; overflow-wrap: normal; }

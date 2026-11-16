@@ -420,3 +420,23 @@ class WikiEditorBrowserTests(unittest.TestCase):
         self.assertEqual(tables.first.locator('strong').inner_text(), 'apple')
         self.assertEqual(tables.nth(1).locator('tbody').inner_text(), 'Unchanged')
         self.assertEqual(self.client.get('/tools/wiki/api/pages/scroll-test').get_json()['page']['content'], content)
+
+    def test_sort_triangles_stay_beside_long_headers_on_desktop_and_phone(self):
+        self.editor.fill('| **A long column heading** | Another long column heading |\n| --- | --- |\n| B | 10 |\n| A | 2 |')
+        self.page.get_by_role('button', name='Save', exact=True).click()
+        table = self.page.locator('#article-top table')
+        table.wait_for(state='visible')
+        for width in (1440, 390):
+            self.page.set_viewport_size({'width': width, 'height': 844})
+            for header in table.locator('th').all():
+                label = header.locator('.wiki-table-heading-label').bounding_box()
+                button = header.get_by_role('button').bounding_box()
+                self.assertAlmostEqual(label['y'] + label['height'] / 2, button['y'] + button['height'] / 2, delta=1)
+                self.assertGreaterEqual(button['x'], label['x'] + label['width'])
+                self.assertEqual(header.locator('svg').count(), 2)
+            self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width)
+        button = table.get_by_role('button', name='Sort A long column heading ascending', exact=True)
+        button.click()
+        self.assertEqual(table.locator('th').first.locator('svg.active path').get_attribute('d'), 'M5 0 10 6H0Z')
+        table.get_by_role('button', name='Sort A long column heading descending', exact=True).click()
+        self.assertEqual(table.locator('th').first.locator('svg.active path').get_attribute('d'), 'M0 0H10L5 6Z')

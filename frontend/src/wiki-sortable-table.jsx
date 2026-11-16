@@ -33,13 +33,16 @@ export function SortableTable({ children, node, ...props }) {
         React.Children.toArray(row.props.children).filter(React.isValidElement).map((cell, column) => {
           const direction = sort?.column === column ? sort.direction : null;
           const label = textOf(cell.props.children).trim() || `Column ${column + 1}`;
-          return React.cloneElement(cell, { "aria-sort": direction || "none" }, <>
-            {cell.props.children}{" "}<button type="button" className="wiki-table-sort"
+          return React.cloneElement(cell, { "aria-sort": direction || "none" }, <span className="wiki-table-heading">
+            <span className="wiki-table-heading-label">{cell.props.children}</span><button type="button" className="wiki-table-sort"
               aria-label={`Sort ${label} ${direction === "ascending" ? "descending" : "ascending"}`}
               onClick={() => setSort({ column, direction: direction === "ascending" ? "descending" : "ascending" })}>
-              <span aria-hidden="true">{direction === "ascending" ? "↑" : direction === "descending" ? "↓" : "↕"}</span>
+              <span className="wiki-table-sort-icons" aria-hidden="true">
+                <svg className={direction === "ascending" ? "active" : ""} viewBox="0 0 10 6" width="10" height="6"><path d="M5 0 10 6H0Z" fill="currentColor" /></svg>
+                <svg className={direction === "descending" ? "active" : ""} viewBox="0 0 10 6" width="10" height="6"><path d="M0 0H10L5 6Z" fill="currentColor" /></svg>
+              </span>
             </button>
-          </>);
+          </span>);
         }),
       ));
     }

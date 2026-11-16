@@ -769,3 +769,10 @@
 .markdown-preview .wiki-table-sort:focus-visible { color: var(--teal); outline: 1px solid var(--teal); }
 .markdown-preview th[aria-sort=ascending] .wiki-table-sort,
 .markdown-preview th[aria-sort=descending] .wiki-table-sort { color: var(--teal); }
+
+.markdown-preview th[aria-sort] { white-space: nowrap; }
+.wiki-table-heading { display: inline-flex; align-items: center; gap: 6px; width: max-content; white-space: nowrap; }
+.wiki-table-heading-label, .wiki-table-heading > .wiki-table-sort { flex: none; }
+.wiki-table-sort-icons { display: flex; flex-direction: column; gap: 2px; }
+.wiki-table-sort-icons svg { display: block; opacity: .4; }
+.wiki-table-sort-icons svg.active { opacity: 1; }
