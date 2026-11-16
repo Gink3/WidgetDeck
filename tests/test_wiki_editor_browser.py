@@ -65,16 +65,9 @@ class WikiEditorBrowserTests(unittest.TestCase):
             self.page.get_by_role('button', name='Captioned image' if captioned else 'Insert image', exact=not captioned).click()
         chooser.value.set_files({'name': 'sample.png', 'mimeType': 'image/png', 'buffer': data.getvalue()})
 
-    def test_save_returns_to_library_in_every_editor_mode(self):
+    def test_save_returns_to_rendered_article_in_edit_and_split_modes(self):
         from playwright.sync_api import expect
-        if not os.environ.get('WIKI_TEST_BASE_URL'):
-            from unittest.mock import patch
-            # Reproduce the launcher redirect that used to reopen the editor.
-            self.client.application.config['LAUNCHER_ENABLED'] = True
-            recent = patch('dashboard.launcher.recent', return_value=[{'url': '/tools/wiki/scroll-test'}])
-            recent.start()
-            self.addCleanup(recent.stop)
-        for mode in ('Edit', 'Split', 'Read'):
+        for mode in ('Edit', 'Split'):
             with self.subTest(mode=mode):
                 self.page.goto(self.base + '/tools/wiki/scroll-test?edit=1')
                 editor = self.page.get_by_role('textbox', name='Article Markdown')
@@ -82,13 +75,14 @@ class WikiEditorBrowserTests(unittest.TestCase):
                 editor.fill(content)
                 self.page.get_by_role('button', name=mode, exact=True).click()
                 toolbar = self.page.locator('.wiki-toolbar')
-                expect(toolbar.get_by_role('link', name='← Wiki', exact=True)).to_have_count(0)
-                save = toolbar.get_by_role('button', name='Save', exact=True)
-                expect(save).to_have_count(1)
-                save.click()
-                expect(self.page).to_have_url(self.base + '/tools/wiki?library=1')
+                toolbar.get_by_role('button', name='Save', exact=True).click()
+                expect(self.page.locator('#article-top')).to_contain_text(content)
+                expect(toolbar.get_by_role('button', name='Read', exact=True)).to_have_attribute('aria-pressed', 'true')
+                expect(toolbar.get_by_role('button', name='Save', exact=True)).to_have_count(0)
                 stored = self.page.request.get(self.base + '/tools/wiki/api/pages/scroll-test').json()['page']
                 self.assertEqual(stored['content'], content)
+                toolbar.get_by_role('button', name='Wiki library', exact=True).click()
+                expect(self.page).to_have_url(self.base + '/tools/wiki?library=1')
 
     def test_library_entry_and_local_draft_return(self):
         from playwright.sync_api import expect

@@ -1446,14 +1446,14 @@ function Editor() {
     returningToLibrary.current = true;
     location.href = "/tools/wiki?library=1";
   }
-  async function leave() {
+  async function saveAndRead() {
     if (uploadBusy.current) {
       setError("Wait for the document upload to finish before leaving.");
       return;
     }
     setLeaving(true);
-    if (await save()) location.href = "/tools/wiki?library=1";
-    else setLeaving(false);
+    if (await save()) changeMode("preview");
+    setLeaving(false);
   }
   async function showHistory() {
     if (!(await save())) return;
@@ -1492,9 +1492,9 @@ function Editor() {
     <main ref={editorRoot} className={'wiki-editor'+(phone?' wiki-phone':'')} data-mode={mode} data-completing={Boolean(completion)}>
       <header className="wiki-toolbar">
         <button aria-label="Wiki library" onClick={returnToLibrary} disabled={uploading}>{phone?'Library':'Wiki library'}</button>
-        <button className="primary" disabled={leaving || uploading} onClick={leave}>
+        {mode !== "preview" && <button className="primary" disabled={leaving || uploading} onClick={saveAndRead}>
           {leaving ? "Saving…" : "Save"}
-        </button>
+        </button>}
         <input
           value={page.title}
           onChange={(e) => update({ title: e.target.value })}
