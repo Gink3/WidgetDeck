@@ -31,7 +31,11 @@
     const message = state.saving ? 'Saving…' : state.failures.size
       ? 'Some changes were not saved. Review this tool’s message before retrying.'
       : state.accepted ? 'Request accepted. Check this tool for completion.' : 'Saved';
-    feedback.textContent = message; feedback.hidden = false;
+    feedback.textContent = message;
+    // Wiki pages already report local drafts and server saves in their toolbar.
+    // Keep global failures and asynchronous acceptance visible.
+    feedback.hidden = Boolean(document.querySelector('#wiki-root[data-page="editor"]'))
+      && !state.failures.size && !state.accepted;
     feedback.dataset.state = state.saving ? 'saving' : state.failures.size ? 'failed' : state.accepted ? 'accepted' : 'saved';
     window.dispatchEvent(new CustomEvent('widgetdeck:save-state', {
       detail: { state: feedback.dataset.state, message, pending: state.saving }

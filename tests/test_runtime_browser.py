@@ -239,3 +239,27 @@ class RuntimeBrowserTests(unittest.TestCase):
             self.assertEqual(page.evaluate('[localSubmits,nativeSubmits]'),[1,0])
             page.evaluate("document.getElementById('native-fixture').requestSubmit()")
             self.assertEqual(page.evaluate('nativeSubmits'),1);browser.close()
+
+    def test_wiki_uses_its_toolbar_instead_of_global_saved_bar(self):
+        from playwright.sync_api import sync_playwright, expect
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            page = self.context(browser).new_page()
+            page.goto(self.base + '/tools/wiki/runtime-article?edit=1')
+            page.wait_for_function('window.WidgetDeckRuntime?.state.verified === true')
+            expect(page.locator('#wiki-root')).to_have_attribute('data-page', 'editor')
+            for width in (390, 1440):
+                page.set_viewport_size({'width': width, 'height': 844})
+                self.probe_status['wiki-save'] = 200
+                page.evaluate("fetch('/api/pwa-test/wiki-save', {method:'POST'})")
+                expect(page.locator('#pwa-save-feedback')).to_have_attribute('data-state', 'saved')
+                expect(page.locator('#pwa-save-feedback')).to_be_hidden()
+            self.probe_status['wiki-save'] = 503
+            page.evaluate("fetch('/api/pwa-test/wiki-save', {method:'POST'})")
+            expect(page.locator('#pwa-save-feedback')).to_have_attribute('data-state', 'failed')
+            expect(page.locator('#pwa-save-feedback')).to_be_visible()
+            self.probe_status['wiki-save'] = 200
+            page.evaluate("fetch('/api/pwa-test/wiki-save', {method:'POST'})")
+            expect(page.locator('#pwa-save-feedback')).to_have_attribute('data-state', 'saved')
+            expect(page.locator('#pwa-save-feedback')).to_be_hidden()
+            browser.close()
