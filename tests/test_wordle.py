@@ -117,3 +117,16 @@ class WordleTests(unittest.TestCase):
         other=self.app.test_client()
         auth_post(other,'/register',{'username':'other-player','password':'test-only-password'})
         self.assertEqual(other.get('/api/activity').json['activity'],[])
+
+    def test_give_up_reveals_answer_records_loss_once_and_checks_owner_revision(self):
+        game=self.start().json['game'];url='/api/tools/wordle/games/'+game['id']+'/give-up'
+        self.assertEqual(self.client.post(url,json={'revision':99},headers=self.headers).status_code,409)
+        other=self.app.test_client();auth_post(other,'/register',{'username':'surrender-other','password':'test-only-password'})
+        token=other.get('/api/tools/wordle/game').json['csrf_token']
+        self.assertEqual(other.post(url,json={'revision':0},headers={'X-CSRF-Token':token}).status_code,404)
+        result=self.client.post(url,json={'revision':0},headers=self.headers)
+        self.assertEqual(result.status_code,200);self.assertEqual(result.json['game']['answer'],'apple')
+        self.assertEqual(result.json['game']['status'],'lost');self.assertEqual(result.json['stats']['played'],1)
+        self.assertEqual(self.client.post(url,json={'revision':0},headers=self.headers).status_code,409)
+        self.assertEqual(self.client.get('/api/tools/wordle/game').json['stats']['played'],1)
+        self.assertEqual(len(self.client.get('/api/activity').json['activity']),1)

@@ -155,3 +155,21 @@ def submit_guess(game_id):
         if status != 'active':
             record_played(game_id)
     return jsonify(game=payload(connection.execute('SELECT * FROM wordle_games WHERE id=?',(game_id,)).fetchone()),stats=statistics())
+
+
+@routes.post('/api/tools/wordle/games/<game_id>/give-up')
+@login_required
+def give_up(game_id):
+    data=request.get_json(silent=True)
+    if not isinstance(data,dict) or type(data.get('revision')) is not int:
+        return jsonify(error='Supply the current revision.'),400
+    connection=db()
+    with connection:
+        connection.execute('BEGIN IMMEDIATE')
+        game=connection.execute('SELECT * FROM wordle_games WHERE id=? AND user_id=?',(game_id,current_user_id())).fetchone()
+        if not game:return jsonify(error='Game not found.'),404
+        if game['status']!='active' or game['revision']!=data['revision']:
+            return jsonify(error='Game changed. Reload to see the latest guesses.'),409
+        connection.execute("UPDATE wordle_games SET status='lost',updated_at=?,revision=revision+1 WHERE id=?",(timestamp(),game_id))
+        record_played(game_id)
+    return jsonify(game=payload(connection.execute('SELECT * FROM wordle_games WHERE id=?',(game_id,)).fetchone()),stats=statistics())

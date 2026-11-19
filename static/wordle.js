@@ -26,8 +26,8 @@
     const active = game?.status === 'active';
     input.disabled = !active || busy; $('#wordle-submit').disabled = !active || busy;
     $('#wordle-new').disabled = busy || !csrf; $('#wordle-refresh').disabled = busy;
-    $('#wordle-hard').disabled = busy;
-    // These settings apply to the next game, so keep them editable during a game.
+    $('#wordle-hard').disabled = busy; $('#wordle-give-up').disabled = !active || busy;
+    // Changing length starts a fresh game; hard mode applies to the next game.
     lengthSelect.disabled = busy;
     $('#wordle-keyboard').querySelectorAll('button').forEach(button => { button.disabled = !active || busy; });
   }
@@ -114,14 +114,23 @@
     finally { busy = false; controls(); }
   }
   $('#wordle-refresh').addEventListener('click',load);
-  $('#wordle-new').addEventListener('click',async () => {
+  async function startGame(confirmReset=true) {
     if (busy) return;
     const reset = game?.status === 'active';
-    if (reset && game.guesses.length && !window.confirm('Starting another game counts this game as a loss. Continue?')) return;
+    if (confirmReset && reset && game.guesses.length && !window.confirm('Starting another game counts this game as a loss. Continue?')) return;
     busy = true;controls();
     try { const data = await api('games',{hard_mode:$('#wordle-hard').checked,word_length:Number(lengthSelect.value),reset,revision:game?.revision}); input.value = ''; render(data); }
-    catch(error) { status(error.message); }
+    catch(error) { if(game)lengthSelect.value=String(game.word_length);status(error.message); }
     finally { busy = false;controls();if (!input.disabled) play.focus({preventScroll:true}); }
+  }
+  $('#wordle-new').addEventListener('click',()=>startGame());
+  lengthSelect.addEventListener('change',()=>startGame(false));
+  $('#wordle-give-up').addEventListener('click',async()=>{
+    if(busy||game?.status!=='active')return;
+    busy=true;controls();
+    try{const data=await api(`games/${game.id}/give-up`,{revision:game.revision});input.value='';render(data);}
+    catch(error){status(error.message);}
+    finally{busy=false;controls();}
   });
   $('#wordle-guess-form').addEventListener('submit',async event => {
     event.preventDefault();if (busy || game?.status !== 'active') return;

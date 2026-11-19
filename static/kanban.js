@@ -11,6 +11,22 @@
   const columnSections = () => [...board.querySelectorAll('.kanban-column')];
   const filterDisclosure=$('.kanban-filters'),phoneQuery=matchMedia('(max-width:900px)');
   const fitFilters=()=>{filterDisclosure.open=!phoneQuery.matches;};fitFilters();phoneQuery.addEventListener('change',fitFilters);
+  function positionFilters(){
+    if(!phoneQuery.matches||!filterDisclosure.open)return;
+    const viewport=window.visualViewport,viewportTop=viewport?.offsetTop||0,height=viewport?.height||innerHeight;
+    const anchor=filterDisclosure.querySelector('summary').getBoundingClientRect(),width=Math.min(480,innerWidth-24);
+    const left=Math.max(12,Math.min(anchor.right-width,innerWidth-width-12));
+    const preferredHeight=Math.min(260,Math.max(44,height-16));
+    const top=Math.max(viewportTop+8,Math.min(anchor.bottom+6,viewportTop+height-preferredHeight-8));
+    filterDisclosure.style.setProperty('--kanban-filter-left',left+'px');filterDisclosure.style.setProperty('--kanban-filter-top',top+'px');
+    filterDisclosure.style.setProperty('--kanban-filter-width',width+'px');filterDisclosure.style.setProperty('--kanban-filter-height',Math.max(44,viewportTop+height-top-8)+'px');
+  }
+  filterDisclosure.addEventListener('toggle',positionFilters);window.addEventListener('resize',positionFilters);
+  window.addEventListener('scroll',positionFilters,{passive:true});window.visualViewport?.addEventListener('resize',positionFilters);window.visualViewport?.addEventListener('scroll',positionFilters);
+  const closeFilters=()=>{filterDisclosure.open=false;filterDisclosure.querySelector('summary').focus();};
+  $('#close-kanban-filters').addEventListener('click',closeFilters);
+  filterDisclosure.addEventListener('keydown',event=>{if(phoneQuery.matches&&event.key==='Escape'){event.preventDefault();event.stopPropagation();closeFilters();}});
+  document.addEventListener('click',event=>{if(phoneQuery.matches&&!filterDisclosure.contains(event.target))filterDisclosure.open=false;});
   const phoneColumn=$('#phone-kanban-column');
   const params=new URLSearchParams(location.search);
   if([...phoneColumn.options].some(option=>option.value===params.get('column')))phoneColumn.value=params.get('column');
@@ -27,8 +43,29 @@
   showPhoneColumn();
   // Native creation forms count as dirty even when their dialogs are closed.
   const formBaseline=new Map([...document.querySelectorAll('dialog form')].map(form=>[form,JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))]));
-  const otherEdits=()=>[...formBaseline].some(([form,value])=>JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))!==value);
+  let nativeSubmittingForm=null;
+  const otherEdits=()=>[...formBaseline].some(([form,value])=>form!==nativeSubmittingForm&&JSON.stringify([...new FormData(form)].filter(([name])=>!name.startsWith('_')))!==value);
 
+  const deleteBoardDialog=$('#delete-board-dialog'),deleteBoardName=$('#delete-board-name'),deleteBoardConfirm=$('#delete-board-confirm');
+  $('#delete-board-open').addEventListener('click',()=>{
+    if(!canLeave())return;
+    deleteBoardName.value='';$('#delete-board-status').textContent='';deleteBoardConfirm.disabled=true;
+    deleteBoardDialog.showModal();deleteBoardName.focus();
+  });
+  deleteBoardName.addEventListener('input',()=>{deleteBoardConfirm.disabled=deleteBoardName.value!==deleteBoardDialog.dataset.boardName;});
+  $('#delete-board-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    if(deleteBoardName.value!==deleteBoardDialog.dataset.boardName||saving||moving)return;
+    saving=true;deleteBoardConfirm.disabled=true;deleteBoardName.disabled=true;
+    try{
+      const response=await fetch(`/api/tools/kanban/boards/${board.dataset.board}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({expected_name:deleteBoardName.value})});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'Unable to delete board.');
+      // The board is gone; successful deletion authorizes leaving its drafts.
+      dirty=false;saving=false;$('#comment-body').value='';formBaseline.clear();
+      deleteBoardDialog.close();location.assign('/tools/kanban?library=1');
+    }catch(error){$('#delete-board-status').textContent=error.message;}
+    finally{saving=false;deleteBoardName.disabled=false;deleteBoardConfirm.disabled=deleteBoardName.value!==deleteBoardDialog.dataset.boardName;}
+  });
   $('#manage-columns').addEventListener('click', () => {
     if (!canLeave()) return;
     dirty = false; $('#comment-body').value = '';
@@ -56,7 +93,14 @@
   const efforts = JSON.parse($('#kanban-efforts-data').textContent);
   const initialEffort = new URLSearchParams(location.search).get('effort');
   if ([...effortFilter.options].some(o => o.value === initialEffort)) effortFilter.value = initialEffort;
-  const filtering = () => Boolean(search.value.trim() || effortFilter.value);
+  const showOlderDone=$('#show-older-done');
+  const olderDone=card=>Boolean(card.dataset.completedAt)&&Date.parse(card.dataset.completedAt)<=Date.now()-7*24*60*60*1000;
+  const showingOlderDone=()=>showOlderDone.getAttribute('aria-pressed')==='true';
+  const hiddenOlder=()=>!showingOlderDone()&&!search.value.trim()&&[...board.querySelectorAll('.kanban-card')].some(olderDone);
+  const filtering = () => Boolean(search.value.trim() || effortFilter.value || hiddenOlder());
+  showOlderDone.addEventListener('click',()=>{const showing=!showingOlderDone();showOlderDone.setAttribute('aria-pressed',String(showing));showOlderDone.textContent=showing?'Hide older Done items':'Show older Done items';updateCounts();});
+  // Recheck ageing in an open board without requiring a page reload.
+  setInterval(updateCounts,60000);
   let commentSaving = false;
   let itemRecovery, commentRecovery;
   let selected = null, dirty = false, saving = false, moving = false, requestNumber = 0, dragged = null, ignoreClickUntil = 0;
@@ -79,12 +123,15 @@
       const textMatch = /^#\d+$/.test(query) ? Number(query.slice(1)) === Number(card.dataset.item)
         : card.querySelector('.kanban-card-title').textContent.toLocaleLowerCase().includes(query);
       const ids = card.dataset.efforts ? card.dataset.efforts.split(',') : [];
-      const match = textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
+      const match = (!olderDone(card)||showingOlderDone()||Boolean(query)) && textMatch && (!effortFilter.value || (effortFilter.value === 'untagged' ? !ids.length : ids.includes(effortFilter.value)));
       card.hidden = !match; matches += Number(match); total++;
     });
     $('#clear-kanban-search').disabled = !query;
     $('#clear-effort-filter').disabled = !effortFilter.value;
-    $('#kanban-search-count').textContent = filtering() ? `${matches} of ${total} items · clear filters to reorder cards` : '';
+    $('#kanban-search-count').textContent = filtering() ? `${matches} of ${total} items` : '';
+    $('#kanban-search-count').title='Clear filters or show older Done items to reorder all cards.';
+    const activeFilters=Boolean(query||effortFilter.value);$('#kanban-filter-indicator').hidden=!activeFilters;
+    filterDisclosure.querySelector('summary').setAttribute('aria-label',activeFilters?'Search and filter (active filters)':'Search and filter');
     columnSections().forEach((section, index, all) => {
       section.draggable = columnMode && !moving;
       section.querySelector('.column-order-controls').hidden = !columnMode;
@@ -108,6 +155,7 @@
     card.classList.toggle('is-cancelled', Boolean(item.cancelled_at));
     card.querySelector('.cancelled-badge').hidden = !item.cancelled_at;
     card.dataset.revision = item.revision;
+    card.dataset.completedAt = item.completed_at || '';
     card.dataset.efforts = (item.efforts || []).map(e => e.id).join(',');
     const badges = card.querySelector('.effort-badges'); badges.replaceChildren();
     (item.efforts || []).forEach(e => { const badge = document.createElement('span'); badge.className = 'effort-badge'; badge.textContent = e.name; badges.append(badge); });
@@ -457,7 +505,13 @@
     if (canLeave()) { dirty = false; location.href = event.target.value; }
     else event.target.value = [...event.target.options].find((option) => option.defaultSelected)?.value || '';
   });
-  document.querySelectorAll('.new-card form').forEach((newForm) => newForm.addEventListener('submit', (event) => { if (!canLeave()) event.preventDefault(); else dirty = false; }));
+  document.querySelectorAll('.new-card form,#new-kanban form').forEach(newForm=>newForm.addEventListener('submit',event=>{
+    if(event.defaultPrevented)return;
+    if(!canLeave()){event.preventDefault();return;}
+    dirty=false;nativeSubmittingForm=newForm;
+    // A later validation handler can cancel submission; keep its draft protected.
+    queueMicrotask(()=>{if(event.defaultPrevented)nativeSubmittingForm=null;});
+  }));
   window.addEventListener('beforeunload', (event) => { if (dirty || saving || moving || commentSaving || $('#comment-body').value.trim() || otherEdits()) { event.preventDefault(); event.returnValue = ''; } });
   function renderEfforts(item) {
     $('#item-efforts-section').hidden = false;

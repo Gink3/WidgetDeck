@@ -44,6 +44,15 @@ def init_database(app):
         )""")
 
         connection.execute("CREATE INDEX IF NOT EXISTS kanban_history_item ON kanban_item_history(item_id,id DESC)")
+        if "completed_at" not in item_columns:
+            connection.execute("ALTER TABLE kanban_items ADD COLUMN completed_at TEXT")
+            for row in connection.execute("SELECT i.id,i.created_at FROM kanban_items i JOIN kanban_columns c ON c.id=i.column_id WHERE lower(trim(c.name))='done'").fetchall():
+                completed=row[1]
+                for history in connection.execute('SELECT changes,occurred_at FROM kanban_item_history WHERE item_id=? ORDER BY id',(row[0],)):
+                    status=json.loads(history[0]).get('status',{})
+                    if str(status.get('after','')).strip().casefold()=='done':completed=history[1]
+                connection.execute('UPDATE kanban_items SET completed_at=? WHERE id=?',(completed,row[0]))
+
 
         connection.execute("""CREATE TABLE IF NOT EXISTS kanban_comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,item_id INTEGER NOT NULL,user_id INTEGER NOT NULL,
@@ -182,6 +191,8 @@ def add_kanban_item(board_id, column_id, title, notes, effort_ids=None):
         now = timestamp()
         cursor = connection.execute("""INSERT INTO kanban_items(board_id,column_id,title,notes,position,created_at,updated_at)
             VALUES(?,?,?,?,?,?,?)""", (board_id, column_id, title, notes, position, now, now))
+        if connection.execute('SELECT name FROM kanban_columns WHERE id=?',(column_id,)).fetchone()[0].strip().casefold()=='done':
+            connection.execute('UPDATE kanban_items SET completed_at=? WHERE id=?',(now,cursor.lastrowid))
         ids = validate_effort_ids([] if effort_ids is None else effort_ids)
         connection.executemany("INSERT INTO kanban_item_efforts(item_id,effort_id) VALUES(?,?)",
                                [(cursor.lastrowid, ident) for ident in ids])
@@ -206,6 +217,8 @@ def _place_item(item, column_id, before_id=None):
     if item["column_id"] != column_id:
         old_column = connection.execute("SELECT name FROM kanban_columns WHERE id=?", (item["column_id"],)).fetchone()
         changes["status"] = {"before": old_column["name"], "after": column["name"]}
+        completed = ((item.get('completed_at') if old_column['name'].strip().casefold()=='done' else None) or timestamp()) if column['name'].strip().casefold()=='done' else None
+        connection.execute('UPDATE kanban_items SET completed_at=? WHERE id=?',(completed,item['id']))
         remaining = [row["id"] for row in connection.execute(
             "SELECT id FROM kanban_items WHERE column_id=? AND id<>? ORDER BY position,id", (item["column_id"], item["id"]))]
         connection.executemany("UPDATE kanban_items SET position=? WHERE id=?", [(index, ident) for index, ident in enumerate(remaining)])
@@ -525,3 +538,22 @@ def kanban_effort_items(effort_id):
         FROM kanban_item_efforts a JOIN kanban_items i ON i.id=a.item_id
         JOIN kanban_boards b ON b.id=i.board_id JOIN kanban_columns c ON c.id=i.column_id
         WHERE a.effort_id=? AND b.user_id=? ORDER BY b.id,c.position,i.position,i.id""",(effort_id,_owner_id()))])
+
+
+def delete_kanban_board(board_id, expected_name):
+    """Delete one owned board atomically after an exact typed-name confirmation."""
+    connection=db()
+    with connection:
+        connection.execute('BEGIN IMMEDIATE')
+        board=kanban_board(board_id)
+        if not board:return False
+        if expected_name!=board['name']:
+            raise ValueError('Enter the exact board name to confirm deletion.')
+        items='SELECT id FROM kanban_items WHERE board_id=?'
+        connection.execute(f'DELETE FROM kanban_links WHERE item_id IN ({items}) OR target_id IN ({items})',(board_id,board_id))
+        for table in ('kanban_comments','kanban_item_history','kanban_item_efforts'):
+            connection.execute(f'DELETE FROM {table} WHERE item_id IN ({items})',(board_id,))
+        connection.execute('DELETE FROM kanban_items WHERE board_id=?',(board_id,))
+        connection.execute('DELETE FROM kanban_columns WHERE board_id=?',(board_id,))
+        connection.execute('DELETE FROM kanban_boards WHERE id=? AND user_id=?',(board_id,_owner_id()))
+    return True
